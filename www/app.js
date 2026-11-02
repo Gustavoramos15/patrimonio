@@ -597,12 +597,16 @@ function stockForm(h) {
       save.holdings(); closeSheet(); toast(display(symbol) + ' adicionada');
       renderStocks(); refreshQuotes();
     };
-    if (editing) $('#f-del', el).onclick = () => {
-      if (!confirm('Remover ' + display(h.symbol) + ' da carteira?')) return;
-      state.holdings = state.holdings.filter((x) => x.id !== h.id); save.holdings();
-      closeSheet(); renderStocks(); renderPortfolioChart(); toast('Posição removida');
-    };
+    if (editing) $('#f-del', el).onclick = () => removeHolding(h);
   });
+}
+
+function removeHolding(h) {
+  if (!confirm('Remover ' + display(h.symbol) + ' da carteira?')) return;
+  state.holdings = state.holdings.filter((x) => x.id !== h.id); save.holdings();
+  delete state.quotes[h.symbol];
+  provData = provData.filter((r) => r.h.id !== h.id);
+  closeSheet(); renderStocks(); renderPortfolioChart(); toast(display(h.symbol) + ' removida');
 }
 
 /* ---------- Detalhe da ação ---------- */
@@ -628,7 +632,7 @@ function stockDetail(h) {
     </div>
     <div class="section-head" style="margin-top:22px"><h2>Proventos</h2></div>
     <div class="entries" id="d-prov"><div class="empty"><span class="spin"></span>Buscando dividendos e JCP…</div></div>
-    <div class="btn-row" style="margin-top:16px"><button class="btn ghost" id="d-edit">Editar</button></div>
+    <div class="btn-row" style="margin-top:16px"><button class="btn ghost" id="d-edit">Editar</button><button class="btn ghost" id="d-del">Remover ação</button></div>
   `, (el) => {
     fetchProvents(h.symbol).then((list) => {
       const sorted = [...list].sort((a, b) => (b.pay || b.ex) - (a.pay || a.ex)).slice(0, 12);
@@ -663,6 +667,7 @@ function stockDetail(h) {
     };
     $('#d-ranges', el).onclick = (e) => { const b = e.target.closest('button'); if (b) { rangeKey = b.dataset.r; load(); } };
     $('#d-edit', el).onclick = () => { closeSheet(); setTimeout(() => stockForm(h), 350); };
+    $('#d-del', el).onclick = () => removeHolding(h);
     load();
   });
 }
@@ -758,12 +763,14 @@ function cardForm(card) {
       if (editing) Object.assign(card, data); else state.cards.push(Object.assign({ id: uid(), entries: [] }, data));
       save.cards(); closeSheet(); renderCards(); toast(editing ? 'Cartão atualizado' : 'Cartão adicionado');
     };
-    if (editing) $('#c-del', el).onclick = () => {
-      if (!confirm('Excluir o cartão ' + card.name + ' e todos os lançamentos?')) return;
-      state.cards = state.cards.filter((x) => x.id !== card.id); save.cards();
-      closeSheet(); renderCards(); toast('Cartão excluído');
-    };
+    if (editing) $('#c-del', el).onclick = () => removeCard(card);
   });
+}
+
+function removeCard(card) {
+  if (!confirm('Remover o cartão ' + card.name + ' e todos os lançamentos?')) return;
+  state.cards = state.cards.filter((x) => x.id !== card.id); save.cards();
+  closeSheet(); renderCards(); toast('Cartão removido');
 }
 
 function cardDetail(card) {
@@ -796,6 +803,7 @@ function cardDetail(card) {
           <div class="e-s">${fmtDate(e.date + 'T12:00:00')}${e.type === 'bonus' ? ' · bônus' : ' · ' + fmtMoney(e.amount) + ' · US$ ' + fmtNum(e.usd, 2)}</div></div>
         <div class="e-r"><div class="e-p">+${fmtNum(entryPoints(card, e))} pts</div><button class="x" data-del="${e.id}">remover</button></div>
       </div>`).join('') : '<p class="hint" style="padding-top:14px">Nenhum lançamento. Lance o valor de cada fatura ou compra.</p>'}</div>
+    <button class="btn ghost" id="cd-del" style="margin-top:18px">Remover cartão</button>
   `, (el) => {
     drawBars($('#cd-bars', el), monthlyPoints(card));
     $('#cd-add', el).onclick = () => { closeSheet(); setTimeout(() => entryForm(card), 350); };
@@ -804,6 +812,7 @@ function cardDetail(card) {
       card.entries = card.entries.filter((e) => e.id !== b.dataset.del); save.cards(); renderCards();
       cardDetail(card);
     });
+    $('#cd-del', el).onclick = () => removeCard(card);
   });
 }
 
