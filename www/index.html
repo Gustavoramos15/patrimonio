@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0a0a">
+  <title>Patrimônio</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="top">
+    <div>
+      <div class="eyebrow" id="greeting">Bem-vindo</div>
+      <h1 class="brand" id="title">Carteira</h1>
+    </div>
+    <button class="icon-btn" id="btn-settings" aria-label="Ajustes">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+    </button>
+  </header>
+
+  <main>
+    <section class="tab active" id="tab-stocks">
+      <div class="hero">
+        <div class="label" id="hero-label">Patrimônio em ações</div>
+        <div class="big" id="hero-value">R$ 0,00</div>
+        <div class="delta" id="hero-delta">&nbsp;</div>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="portfolio-chart"></canvas>
+        <div class="chart-empty" id="portfolio-empty">Adicione ações para ver o gráfico da carteira</div>
+      </div>
+      <div class="ranges" id="portfolio-ranges"></div>
+
+      <div class="stats" id="portfolio-stats"></div>
+
+      <div class="section-head">
+        <h2>Posições</h2>
+        <button class="pill" id="btn-add-stock">+ Adicionar</button>
+      </div>
+      <div class="list" id="stock-list"></div>
+      <div class="foot-note" id="stock-updated"></div>
+
+      <div id="alloc-section" hidden>
+        <div class="section-head"><h2>Distribuição</h2></div>
+        <div class="donut-block" id="alloc"></div>
+      </div>
+
+      <div id="prov-section" hidden>
+        <div class="section-head"><h2>Proventos</h2><span class="tag-muted" id="prov-status"></span></div>
+        <div class="stats" id="prov-stats"></div>
+        <div class="sub-head">Próximos</div>
+        <div class="entries" id="prov-next"></div>
+        <div class="sub-head">Pagos recentemente</div>
+        <div class="entries" id="prov-past"></div>
+        <div class="foot-note">Valores estimados com a quantidade atual. JCP é bruto (15% de IR retido na fonte). Para ter direito, é preciso ter a ação na data com. Fonte: Status Invest / Yahoo Finance.</div>
+      </div>
+    </section>
+
+    <section class="tab" id="tab-cards">
+      <div class="hero">
+        <div class="label">Pontos acumulados</div>
+        <div class="big" id="cards-points">0</div>
+        <div class="delta" id="cards-sub">&nbsp;</div>
+      </div>
+      <div class="stats" id="cards-stats"></div>
+
+      <div class="section-head">
+        <h2>Meus cartões</h2>
+        <button class="pill" id="btn-add-card">+ Adicionar</button>
+      </div>
+      <div id="card-list"></div>
+      <div id="cards-alloc-section" hidden>
+        <div class="section-head"><h2>Pontos por cartão</h2></div>
+        <div class="donut-block" id="cards-alloc"></div>
+      </div>
+      <div class="foot-note">Pontos = (gasto em R$ ÷ cotação do dólar) × pontos por dólar do cartão. Milhas = pontos × taxa de transferência.</div>
+    </section>
+  </main>
+
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="stocks">
+      <svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg>
+      <span>Ações</span>
+    </button>
+    <button class="tab-btn" data-tab="cards">
+      <svg viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M2.5 10h19"/><path d="M6 15h4"/></svg>
+      <span>Cartões</span>
+    </button>
+  </nav>
+
+  <div class="sheet-wrap" id="sheet">
+    <div class="sheet-backdrop"></div>
+    <div class="sheet">
+      <div class="grab"></div>
+      <div class="sheet-body" id="sheet-body"></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,4 @@
+node_modules/
+*.apk
+.claude/
+.DS_Store
