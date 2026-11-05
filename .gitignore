@@ -2,3 +2,5 @@ node_modules/
 android/app/build/
 .claude/
 .DS_Store
+pipeline/.cache/
+__pycache__/

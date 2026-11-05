@@ -1,0 +1,41 @@
+name: Atualizar fundamentos (CVM)
+
+# Baixa as demonstrações oficiais da CVM e gera data/fundamentos/*.json,
+# que a aba Termômetro do app lê. A CVM atualiza os arquivos diariamente.
+on:
+  schedule:
+    - cron: "30 9 * * *"   # todo dia às 06:30 (horário de Brasília)
+  workflow_dispatch:        # permite rodar na mão pela aba Actions
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fundamentos
+  cancel-in-progress: false
+
+jobs:
+  atualizar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Gerar dados
+        run: python -I pipeline/cvm_fundamentos.py --out data/fundamentos --cache pipeline/.cache
+
+      - name: Salvar se mudou
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/fundamentos
+          if git diff --cached --quiet; then
+            echo "Sem mudanças nos dados."
+          else
+            git commit -m "Atualiza fundamentos da CVM ($(date -u +%Y-%m-%d))"
+            git push
+          fi
