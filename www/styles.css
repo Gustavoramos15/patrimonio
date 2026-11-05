@@ -21,6 +21,8 @@
   --text: #f4f4f2;
   --muted: #8b8b88;
   --faint: #5a5a58;
+  --up: #3ecf8e;     /* alta */
+  --down: #f2545b;   /* queda */
 
   /* tipo */
   --serif: "Instrument Serif", "Noto Serif", Georgia, serif;
@@ -201,7 +203,10 @@ main { padding: 0 var(--g) calc(var(--nav-h) + 56px + env(safe-area-inset-bottom
 .row .right, .entry .e-r { text-align: right; }
 .row .price, .entry .e-p { font-size: var(--fs-body); }
 .chg, .entry .x { font-size: var(--fs-caption); margin-top: 3px; color: var(--muted); }
-.chg.up { color: var(--text); }
+.chg.up, .up { color: var(--up); }
+.chg.down, .down { color: var(--down); }
+.delta b.up { color: var(--up); }
+.delta b.down { color: var(--down); }
 
 .entry { display: flex; justify-content: space-between; align-items: center; gap: var(--s3); min-height: 64px; padding: var(--s3) 0; }
 .entry .e-l { min-width: 0; }
@@ -395,3 +400,16 @@ main { padding: 0 var(--g) calc(var(--nav-h) + 56px + env(safe-area-inset-bottom
 .switch i { position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: var(--muted); transition: transform .25s var(--ease), background .2s; }
 .switch[aria-checked="true"] { background: var(--text); }
 .switch[aria-checked="true"] i { transform: translateX(20px); background: var(--bg); }
+
+/* ---------- Alertas: duas chaves no mesmo cartão ---------- */
+.alert-card { display: block; padding: var(--s4) var(--s4) var(--s1); }
+.ac-head { padding-bottom: var(--s3); }
+.ac-row { display: flex; align-items: center; justify-content: space-between; gap: var(--s4); padding: var(--s3) 0; border-top: 1px solid var(--line); }
+.ac-label { font-size: var(--fs-small); font-weight: 500; }
+.ac-hint { font-size: var(--fs-caption); color: var(--muted); margin-top: 2px; line-height: 1.45; }
+/* atalho "Avisar no celular" na seção de proventos */
+.pill-switch { display: inline-flex; align-items: center; gap: var(--s2); color: var(--muted); }
+.pill-switch .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); transition: background .2s; }
+.pill-switch[aria-checked="true"] { color: var(--text); border-color: var(--text); }
+.pill-switch[aria-checked="true"] .dot { background: var(--up); }
+.section-head h2 .tag-muted { font-family: var(--sans); vertical-align: middle; margin-left: var(--s1); }

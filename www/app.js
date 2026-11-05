@@ -44,6 +44,11 @@ const fmtMoney = (v, cur = 'BRL') =>
 const fmtNum = (v, d = 0) => new Intl.NumberFormat('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d }).format(v || 0);
 const fmtPct = (v) => (v >= 0 ? '+' : '') + fmtNum(v, 2) + '%';
 const arrow = (v) => (v >= 0 ? '▲' : '▼');
+const tone = (v) => (v >= 0 ? 'up' : 'down');
+const TREND = {
+  up: { line: '#3ecf8e', rgb: '62,207,142' },
+  down: { line: '#f2545b', rgb: '242,84,91' },
+};
 const fmtDate = (t, opts = { day: '2-digit', month: 'short', year: 'numeric' }) =>
   new Date(t).toLocaleDateString('pt-BR', opts).replace('.', '');
 const fmtTime = (t) => new Date(t).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
@@ -308,8 +313,8 @@ function drawLine(canvas, points, opts = {}) {
   if (min === max) { min -= 1; max += 1; }
   const x = (i) => padX + (i / (points.length - 1)) * (w - padX * 2);
   const y = (v) => padT + (1 - (v - min) / (max - min)) * (h - padT - padB);
-  const up = vals[vals.length - 1] >= vals[0];
-  const stroke = opts.spark ? (up ? '#f4f4f2' : '#6a6a68') : '#f4f4f2';
+  const trend = TREND[vals[vals.length - 1] >= baseV ? 'up' : 'down'];
+  const stroke = trend.line;
 
   // baseline (valor inicial)
   if (!opts.spark) {
@@ -323,7 +328,7 @@ function drawLine(canvas, points, opts = {}) {
 
   if (!opts.spark) {
     const g = ctx.createLinearGradient(0, padT, 0, h);
-    g.addColorStop(0, 'rgba(244,244,242,0.16)'); g.addColorStop(1, 'rgba(244,244,242,0)');
+    g.addColorStop(0, `rgba(${trend.rgb},0.24)`); g.addColorStop(0.65, `rgba(${trend.rgb},0.05)`); g.addColorStop(1, `rgba(${trend.rgb},0)`);
     ctx.lineTo(x(points.length - 1), h); ctx.lineTo(x(0), h); ctx.closePath();
     ctx.fillStyle = g; ctx.fill();
 
@@ -342,11 +347,12 @@ function drawLine(canvas, points, opts = {}) {
       const sx = x(si), sy = y(points[si].v);
       ctx.strokeStyle = 'rgba(244,244,242,.35)'; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.moveTo(sx, 0); ctx.lineTo(sx, h); ctx.stroke();
-      ctx.fillStyle = '#0a0a0a'; ctx.strokeStyle = '#f4f4f2'; ctx.lineWidth = 2;
+      ctx.fillStyle = '#0a0a0a'; ctx.strokeStyle = trend.line; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(sx, sy, 5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
     } else {
       const lx = x(points.length - 1), ly = y(vals[vals.length - 1]);
-      ctx.fillStyle = '#f4f4f2'; ctx.beginPath(); ctx.arc(lx - 1, ly, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = `rgba(${trend.rgb},0.25)`; ctx.beginPath(); ctx.arc(lx - 1, ly, 7, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = trend.line; ctx.beginPath(); ctx.arc(lx - 1, ly, 3, 0, Math.PI * 2); ctx.fill();
     }
   }
 }
@@ -472,7 +478,7 @@ function heroDefault() {
   if (!state.holdings.length) { setHero(0, 'Nenhuma posição cadastrada'); return; }
   const day = t.value - t.dayPrev, dayPct = t.dayPrev ? (day / t.dayPrev) * 100 : 0;
   setHero(t.value, t.priced
-    ? `<b>${arrow(day)} ${fmtMoney(Math.abs(day))}</b> &nbsp;${fmtPct(dayPct)} hoje`
+    ? `<b class="${tone(day)}">${arrow(day)} ${fmtMoney(Math.abs(day))} · ${fmtPct(dayPct)}</b> hoje`
     : 'Aguardando cotações…');
 }
 
@@ -484,7 +490,7 @@ function renderStocks() {
   const res = t.value - t.invested, resPct = t.invested ? (res / t.invested) * 100 : 0;
   $('#portfolio-stats').innerHTML = state.holdings.length ? `
     <div class="stat"><div class="k">Investido</div><div class="v">${fmtMoney(t.invested)}</div></div>
-    <div class="stat"><div class="k">Resultado</div><div class="v">${arrow(res)} ${fmtPct(resPct)}</div></div>
+    <div class="stat"><div class="k">Resultado</div><div class="v ${tone(res)}">${arrow(res)} ${fmtPct(resPct)}</div></div>
     <div class="stat"><div class="k">Lucro / Prejuízo</div><div class="v">${fmtMoney(res)}</div></div>
     <div class="stat"><div class="k">Ativos</div><div class="v">${state.holdings.length}</div></div>` : '';
 
@@ -510,7 +516,7 @@ function renderStocks() {
         <div class="sub">${fmtNum(h.qty, h.qty % 1 ? 2 : 0)} un · ${q ? fmtMoney(h.qty * q.price, cur) : 'PM ' + fmtMoney(h.avg, cur)}</div></div>
       <canvas data-spark="${esc(h.symbol)}"></canvas>
       <div class="right"><div class="price">${q ? fmtMoney(q.price, cur) : '—'}</div>
-        <div class="chg ${chg >= 0 ? 'up' : ''}">${chg == null ? '' : arrow(chg) + ' ' + fmtPct(chg)}</div></div>
+        <div class="chg ${chg == null ? '' : tone(chg)}">${chg == null ? '' : arrow(chg) + ' ' + fmtPct(chg)}</div></div>
     </button>`;
   }).join('');
   list.querySelectorAll('canvas[data-spark]').forEach((c) => {
@@ -555,7 +561,7 @@ async function renderPortfolioChart() {
   makeScrubbable(canvas, (p, all) => {
     const diff = p.v - all[0].v, pct = all[0].v ? (diff / all[0].v) * 100 : 0;
     $('#hero-label').textContent = fmtDate(p.t);
-    setHero(p.v, `<b>${arrow(diff)} ${fmtMoney(Math.abs(diff))}</b> &nbsp;${fmtPct(pct)} no período`);
+    setHero(p.v, `<b class="${tone(diff)}">${arrow(diff)} ${fmtMoney(Math.abs(diff))} · ${fmtPct(pct)}</b> no período`);
   }, heroDefault);
 }
 
@@ -655,7 +661,7 @@ function stockDetail(h) {
       <div class="stat"><div class="k">Quantidade</div><div class="v">${fmtNum(h.qty, h.qty % 1 ? 2 : 0)}</div></div>
       <div class="stat"><div class="k">Preço médio</div><div class="v">${fmtMoney(h.avg, cur)}</div></div>
       <div class="stat"><div class="k">Posição</div><div class="v">${fmtMoney(pos, cur)}</div></div>
-      <div class="stat"><div class="k">Resultado</div><div class="v">${arrow(res)} ${fmtMoney(Math.abs(res), cur)} · ${fmtPct(resPct)}</div></div>
+      <div class="stat"><div class="k">Resultado</div><div class="v ${tone(res)}">${arrow(res)} ${fmtMoney(Math.abs(res), cur)} · ${fmtPct(resPct)}</div></div>
     </div>
     <div class="section-head"><h2>Proventos</h2></div>
     <div class="entries" id="d-prov">${skeleton(3)}</div>
@@ -671,7 +677,7 @@ function stockDetail(h) {
       const diff = pts[pts.length - 1].v - pts[0].v, pct = (diff / pts[0].v) * 100;
       $('#d-label', el).textContent = 'Preço atual';
       $('#d-price', el).textContent = fmtMoney(pts[pts.length - 1].v, cur);
-      $('#d-delta', el).innerHTML = `<b>${arrow(diff)} ${fmtMoney(Math.abs(diff), cur)}</b> &nbsp;${fmtPct(pct)} em ${rangeKey}`;
+      $('#d-delta', el).innerHTML = `<b class="${tone(diff)}">${arrow(diff)} ${fmtMoney(Math.abs(diff), cur)} · ${fmtPct(pct)}</b> em ${rangeKey}`;
     };
     const load = async () => {
       $('#d-ranges', el).innerHTML = Object.keys(RANGES)
@@ -686,7 +692,7 @@ function stockDetail(h) {
           const diff = p.v - all[0].v, pct = (diff / all[0].v) * 100;
           $('#d-label', el).textContent = fmtDate(p.t);
           $('#d-price', el).textContent = fmtMoney(p.v, cur);
-          $('#d-delta', el).innerHTML = `<b>${arrow(diff)} ${fmtMoney(Math.abs(diff), cur)}</b> &nbsp;${fmtPct(pct)} desde o início`;
+          $('#d-delta', el).innerHTML = `<b class="${tone(diff)}">${arrow(diff)} ${fmtMoney(Math.abs(diff), cur)} · ${fmtPct(pct)}</b> desde o início`;
         }, () => deltaDefault(canvas._chart.points));
       } catch {
         $('.chart-empty', wrap).textContent = 'Sem dados de histórico agora.';
@@ -973,7 +979,7 @@ function quoteRow(symbol, title, sub, d) {
     <div><div class="sym">${esc(title)}</div><div class="sub">${esc(sub)}</div></div>
     <canvas data-qspark="${esc(symbol)}"></canvas>
     <div class="right"><div class="price">${d ? fmtQuote(d.price, symbol, d.currency) : '—'}</div>
-      <div class="chg ${c && c.pct >= 0 ? 'up' : ''}">${c ? arrow(c.pct) + ' ' + fmtPct(c.pct) : ''}</div></div>
+      <div class="chg ${c ? tone(c.pct) : ''}">${c ? arrow(c.pct) + ' ' + fmtPct(c.pct) : ''}</div></div>
   </button>`;
 }
 // variação do dia a partir da série diária de 1 mês
@@ -999,7 +1005,7 @@ async function renderIbov() {
     const heroDefault = () => {
       $('#ibov-label').textContent = 'Ibovespa · B3' + (today.offline ? ' · offline' : '');
       $('#ibov-value').innerHTML = `${fmtNum(today.price, 0)}<small class="suf">pts</small>`;
-      $('#ibov-delta').innerHTML = `<b>${arrow(ch.diff)} ${fmtNum(Math.abs(ch.diff), 0)} pts</b> &nbsp;${fmtPct(ch.pct)} hoje`;
+      $('#ibov-delta').innerHTML = `<b class="${tone(ch.diff)}">${arrow(ch.diff)} ${fmtNum(Math.abs(ch.diff), 0)} pts · ${fmtPct(ch.pct)}</b> hoje`;
     };
     heroDefault();
     wrap.classList.toggle('empty', d.points.length < 2);
@@ -1009,7 +1015,7 @@ async function renderIbov() {
       const base = intraday ? ch.prev : all[0].v, diff = p.v - base;
       $('#ibov-label').textContent = intraday ? 'Hoje às ' + fmtTime(p.t) : fmtDate(p.t);
       $('#ibov-value').innerHTML = `${fmtNum(p.v, 0)}<small class="suf">pts</small>`;
-      $('#ibov-delta').innerHTML = `<b>${arrow(diff)} ${fmtNum(Math.abs(diff), 0)} pts</b> &nbsp;${fmtPct((diff / base) * 100)} ${intraday ? 'no dia' : 'no período'}`;
+      $('#ibov-delta').innerHTML = `<b class="${tone(diff)}">${arrow(diff)} ${fmtNum(Math.abs(diff), 0)} pts · ${fmtPct((diff / base) * 100)}</b> ${intraday ? 'no dia' : 'no período'}`;
     }, heroDefault);
     const pts = d.points.map((p) => p.v);
     const st = (v) => (v == null ? '—' : fmtNum(v, 0));
@@ -1078,7 +1084,7 @@ function quoteSheet(symbol, title) {
         const def = () => {
           $('#q-label', el).textContent = 'Agora';
           $('#q-price', el).textContent = fmtQuote(today.price, symbol, cur);
-          $('#q-delta', el).innerHTML = `<b>${arrow(ch.diff)} ${fmtQuote(Math.abs(ch.diff), symbol, cur)}</b> &nbsp;${fmtPct(ch.pct)} hoje`;
+          $('#q-delta', el).innerHTML = `<b class="${tone(ch.diff)}">${arrow(ch.diff)} ${fmtQuote(Math.abs(ch.diff), symbol, cur)} · ${fmtPct(ch.pct)}</b> hoje`;
         };
         def();
         wrap.classList.toggle('empty', d.points.length < 2);
@@ -1087,7 +1093,7 @@ function quoteSheet(symbol, title) {
           const base = intraday ? ch.prev : all[0].v, diff = p.v - base;
           $('#q-label', el).textContent = intraday ? 'Hoje às ' + fmtTime(p.t) : fmtDate(p.t);
           $('#q-price', el).textContent = fmtQuote(p.v, symbol, cur);
-          $('#q-delta', el).innerHTML = `<b>${arrow(diff)} ${fmtQuote(Math.abs(diff), symbol, cur)}</b> &nbsp;${fmtPct((diff / base) * 100)}`;
+          $('#q-delta', el).innerHTML = `<b class="${tone(diff)}">${arrow(diff)} ${fmtQuote(Math.abs(diff), symbol, cur)} · ${fmtPct((diff / base) * 100)}</b>`;
         }, def);
         const st = (v) => (v == null ? '—' : fmtQuote(v, symbol, cur));
         $('#q-stats', el).innerHTML = `
@@ -1192,37 +1198,49 @@ const alertsPlugin = () => (window.Capacitor && window.Capacitor.Plugins && wind
 
 async function syncAlerts() {
   const p = alertsPlugin(); if (!p) return;
-  try { await p.configure({ enabled: !!state.settings.alerts, tickers: state.holdings.map((h) => display(h.symbol)) }); } catch {}
+  try {
+    await p.configure({
+      news: !!state.settings.alerts,
+      provents: !!state.settings.provAlerts,
+      holdings: state.holdings.map((h) => ({ ticker: display(h.symbol), qty: h.qty, b3: /\.SA$/.test(h.symbol) })),
+    });
+  } catch {}
 }
 
 function renderAlertCard() {
-  const on = !!state.settings.alerts && !!alertsPlugin();
-  $('#alert-switch').setAttribute('aria-checked', String(on));
+  const native = !!alertsPlugin();
+  document.querySelectorAll('[data-alert]').forEach((b) =>
+    b.setAttribute('aria-checked', String(native && !!state.settings[b.dataset.alert])));
   const tickers = state.holdings.map((h) => display(h.symbol));
-  $('#alert-sub').textContent = !alertsPlugin() ? 'Disponível no app instalado no celular.'
+  const any = state.settings.alerts || state.settings.provAlerts;
+  $('#alert-sub').textContent = !native ? 'Disponível no app instalado no celular.'
     : !tickers.length ? 'Adicione ações à carteira para receber alertas.'
-    : on ? `Ativo para ${tickers.join(', ')}. O celular confere as notícias a cada 30 minutos, mesmo com o app fechado.`
-    : 'Receba uma notificação quando sair notícia das ações da sua carteira.';
+    : any ? `Ativo para ${tickers.join(', ')}. O celular confere a cada ~5 min, mesmo com o app fechado.`
+    : 'Avisos mesmo com o app fechado.';
 }
 
-$('#alert-switch').onclick = async () => {
+const ALERT_NAMES = { alerts: 'Alertas de notícias', provAlerts: 'Avisos de proventos' };
+async function toggleAlert(key) {
   const p = alertsPlugin();
   if (!p) return toast('Funciona no app instalado no celular');
-  if (!state.settings.alerts) {
+  if (!state.settings[key]) {
     if (!state.holdings.length) return toast('Adicione ações à carteira primeiro');
     try {
       const r = await p.requestNotifications();
       if (!r || !r.granted) return toast('Permita as notificações do app nas configurações do Android');
     } catch { return toast('Não foi possível pedir permissão'); }
-    state.settings.alerts = true; save.settings(); await syncAlerts();
+    state.settings[key] = true; save.settings(); await syncAlerts();
     try { await p.checkNow(); } catch {}
-    toast('Alertas de notícias ativados');
+    toast(ALERT_NAMES[key] + ' ativados');
   } else {
-    state.settings.alerts = false; save.settings(); await syncAlerts();
-    toast('Alertas desativados');
+    state.settings[key] = false; save.settings(); await syncAlerts();
+    toast(ALERT_NAMES[key] + ' desativados');
   }
   renderAlertCard();
-};
+}
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-alert]'); if (b) toggleAlert(b.dataset.alert);
+});
 $('#news-seg').onclick = (e) => {
   const b = e.target.closest('button'); if (!b || b.dataset.feed === newsFeed) return;
   newsFeed = b.dataset.feed; $('#news-list').innerHTML = ''; renderNews();
@@ -1291,7 +1309,7 @@ window.addEventListener('scroll', () => $('.top').classList.toggle('compact', wi
     if (SB) { SB.setStyle({ style: 'DARK' }); SB.setBackgroundColor({ color: '#0a0a0a' }); }
   } catch {}
   renderStocks(); renderCards(); renderPortfolioChart();
-  syncAlerts();
+  syncAlerts(); renderAlertCard();
   await refreshUsd();
   renderCards();
   refreshQuotes();

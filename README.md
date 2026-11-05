@@ -4,13 +4,13 @@ App de finanças pessoais para Android, em preto e branco.
 
 ## Baixar
 
-**[Patrimonio-v1.2.0.apk](Patrimonio-v1.2.0.apk)** — baixe no celular e abra para instalar (permita instalar de fontes desconhecidas).
+**[Patrimonio-v1.3.0.apk](Patrimonio-v1.3.0.apk)** — baixe no celular e abra para instalar (permita instalar de fontes desconhecidas).
 
 ## Funcionalidades
 
 **Ações**
 - Carteira com ticker, quantidade e preço médio (B3 e exterior)
-- Gráfico da carteira e de cada ativo (1M, 3M, 6M, 1A, 5A), com valor ao arrastar o dedo
+- Gráfico da carteira e de cada ativo (1M, 3M, 6M, 1A, 5A), com valor ao arrastar o dedo; verde na alta e vermelho na queda
 - Gráfico de pizza da distribuição da carteira
 - Remover ação direto na tela do ativo
 - Proventos: próximos dividendos e JCP (data com, pagamento, valor por ação e total), recebido em 12 meses e yield
@@ -22,7 +22,8 @@ App de finanças pessoais para Android, em preto e branco.
 
 **Notícias**
 - Notícias das ações da carteira (com filtro por ação) e do mercado, via Google Notícias
-- Alertas no celular: o app confere as notícias a cada ~30 min, mesmo fechado, e notifica as novas
+- Alertas no celular: o app confere as notícias a cada ~5 min, mesmo fechado, e notifica as novas
+- Avisos de proventos: quando a ação anuncia dividendo/JCP e, no dia do pagamento, quanto caiu na conta
 
 **Cartões**
 - Cadastro de cartões com programa de pontos, pontos por dólar e taxa de transferência para milhas

@@ -46,7 +46,8 @@
       </div>
 
       <div id="prov-section" hidden>
-        <div class="section-head"><h2>Proventos</h2><span class="tag-muted" id="prov-status"></span></div>
+        <div class="section-head"><h2>Proventos <span class="tag-muted" id="prov-status"></span></h2>
+          <button class="pill pill-switch" data-alert="provAlerts" role="switch" aria-checked="false"><span class="dot"></span>Avisar no celular</button></div>
         <div class="stats" id="prov-stats"></div>
         <div class="sub-head">Próximos</div>
         <div class="entries" id="prov-next"></div>
@@ -81,11 +82,18 @@
 
     <section class="tab" id="tab-news">
       <div class="alert-card" id="alert-card">
-        <div>
+        <div class="ac-head">
           <div class="ac-title">Alertas no celular</div>
-          <div class="ac-sub" id="alert-sub">Receba uma notificação quando sair notícia das ações da sua carteira.</div>
+          <div class="ac-sub" id="alert-sub">Avisos mesmo com o app fechado.</div>
         </div>
-        <button class="switch" id="alert-switch" role="switch" aria-checked="false" aria-label="Alertas de notícias"><i></i></button>
+        <div class="ac-row">
+          <div><div class="ac-label">Notícias da carteira</div><div class="ac-hint">Assim que sair notícia das suas ações</div></div>
+          <button class="switch" data-alert="alerts" role="switch" aria-checked="false" aria-label="Alertas de notícias"><i></i></button>
+        </div>
+        <div class="ac-row">
+          <div><div class="ac-label">Proventos</div><div class="ac-hint">Anúncio de dividendo e JCP, e quanto caiu na conta no dia do pagamento</div></div>
+          <button class="switch" data-alert="provAlerts" role="switch" aria-checked="false" aria-label="Alertas de proventos"><i></i></button>
+        </div>
       </div>
       <div class="seg" id="news-seg">
         <button class="on" data-feed="mine">Minha carteira</button>

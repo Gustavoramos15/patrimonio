@@ -2,11 +2,11 @@ package com.gustavo.patrimonio;
 
 import android.Manifest;
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.os.Build;
 
 import androidx.core.app.NotificationManagerCompat;
 import androidx.work.Constraints;
+import androidx.work.Data;
 import androidx.work.ExistingPeriodicWorkPolicy;
 import androidx.work.NetworkType;
 import androidx.work.OneTimeWorkRequest;
@@ -25,25 +25,28 @@ import com.getcapacitor.annotation.PermissionCallback;
 
 import java.util.concurrent.TimeUnit;
 
-/** Ponte entre o app (JS) e a verificação de notícias em segundo plano. */
+/** Ponte entre o app (JS) e os alertas em segundo plano (notícias e proventos). */
 @CapacitorPlugin(
         name = "NewsAlerts",
         permissions = { @Permission(strings = { Manifest.permission.POST_NOTIFICATIONS }, alias = "notifications") }
 )
 public class NewsAlertsPlugin extends Plugin {
 
-    private static final String WORK = "news-alerts";
+    private static final String PERIODIC = "news-alerts";
 
-    private SharedPreferences prefs() {
-        return getContext().getSharedPreferences(NewsWorker.PREFS, Context.MODE_PRIVATE);
-    }
-
+    /** news, provents: chaves ligadas; holdings: [{ticker, qty, b3}] */
     @PluginMethod
     public void configure(PluginCall call) {
-        boolean enabled = Boolean.TRUE.equals(call.getBoolean("enabled", false));
-        JSArray tickers = call.getArray("tickers", new JSArray());
-        prefs().edit().putBoolean("enabled", enabled).putString("tickers", tickers.toString()).apply();
-        schedule(getContext(), enabled);
+        boolean news = Boolean.TRUE.equals(call.getBoolean("news", false));
+        boolean provents = Boolean.TRUE.equals(call.getBoolean("provents", false));
+        JSArray holdings = call.getArray("holdings", new JSArray());
+        getContext().getSharedPreferences(NewsWorker.PREFS, Context.MODE_PRIVATE).edit()
+                .putBoolean("news_enabled", news)
+                .putBoolean("prov_enabled", provents)
+                .remove("enabled").remove("tickers") // formato antigo
+                .putString("holdings", holdings.toString())
+                .apply();
+        schedule(getContext(), news || provents);
         call.resolve();
     }
 
@@ -70,6 +73,7 @@ public class NewsAlertsPlugin extends Plugin {
     @PluginMethod
     public void checkNow(PluginCall call) {
         WorkManager.getInstance(getContext()).enqueue(new OneTimeWorkRequest.Builder(NewsWorker.class)
+                .setInputData(new Data.Builder().putBoolean("force", true).build())
                 .setConstraints(networkOnly()).build());
         call.resolve();
     }
@@ -77,13 +81,16 @@ public class NewsAlertsPlugin extends Plugin {
     static void schedule(Context ctx, boolean enabled) {
         WorkManager wm = WorkManager.getInstance(ctx);
         if (!enabled) {
-            wm.cancelUniqueWork(WORK);
+            wm.cancelUniqueWork(PERIODIC);
+            wm.cancelUniqueWork(NewsWorker.CHAIN);
             return;
         }
-        PeriodicWorkRequest req = new PeriodicWorkRequest.Builder(NewsWorker.class, 30, TimeUnit.MINUTES)
+        // rede de segurança: 15 min é o mínimo do Android; a corrente de ~5 min roda por cima
+        PeriodicWorkRequest req = new PeriodicWorkRequest.Builder(NewsWorker.class, 15, TimeUnit.MINUTES)
                 .setConstraints(networkOnly())
                 .build();
-        wm.enqueueUniquePeriodicWork(WORK, ExistingPeriodicWorkPolicy.KEEP, req);
+        wm.enqueueUniquePeriodicWork(PERIODIC, ExistingPeriodicWorkPolicy.UPDATE, req);
+        NewsWorker.scheduleNext(ctx);
     }
 
     private static Constraints networkOnly() {
