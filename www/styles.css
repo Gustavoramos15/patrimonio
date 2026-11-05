@@ -286,14 +286,14 @@ main { padding: 0 var(--g) calc(var(--nav-h) + 56px + env(safe-area-inset-bottom
   box-shadow: 0 12px 32px -12px rgba(0,0,0,.8);
 }
 .tab-btn {
-  display: flex; align-items: center; height: 46px; padding: 0 16px; border-radius: var(--r-pill);
+  display: flex; align-items: center; height: 46px; padding: 0 13px; border-radius: var(--r-pill);
   color: var(--muted); font-size: 14px; font-weight: 500;
   transition: background .25s var(--ease), color .25s;
 }
 .tab-btn svg { width: 20px; height: 20px; flex: none; }
 .tab-btn span { max-width: 0; overflow: hidden; white-space: nowrap; transition: max-width .3s var(--ease), margin .3s var(--ease); }
 .tab-btn.active { background: var(--text); color: var(--bg); }
-.tab-btn.active span { max-width: 90px; margin-left: var(--s2); }
+.tab-btn.active span { max-width: 112px; margin-left: var(--s2); }
 
 /* ---------- Painel inferior (detalhes e formulários) ---------- */
 .sheet-wrap { position: fixed; inset: 0; z-index: 50; pointer-events: none; }
@@ -413,3 +413,57 @@ main { padding: 0 var(--g) calc(var(--nav-h) + 56px + env(safe-area-inset-bottom
 .pill-switch[aria-checked="true"] { color: var(--text); border-color: var(--text); }
 .pill-switch[aria-checked="true"] .dot { background: var(--up); }
 .section-head h2 .tag-muted { font-family: var(--sans); vertical-align: middle; margin-left: var(--s1); }
+
+/* ---------- Termômetro ---------- */
+.search { display: flex; align-items: center; gap: var(--s2); height: var(--button-h); padding: 0 var(--s4); margin-top: var(--s2);
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-pill); color: var(--muted); }
+.search svg { width: 18px; height: 18px; flex: none; }
+.search input { flex: 1; min-width: 0; height: 100%; background: none; border: 0; outline: none; font-size: var(--fs-body); color: var(--text); }
+.suggest { margin: var(--s2) 0; border-radius: var(--r-md); overflow: hidden; border: 1px solid var(--line); }
+.suggest:empty { display: none; }
+.suggest button { display: flex; gap: var(--s3); align-items: baseline; width: 100%; padding: var(--s3) var(--s4); text-align: left; background: var(--surface); border-bottom: 1px solid var(--line); }
+.suggest button:last-child { border-bottom: 0; }
+.suggest button span { font-size: var(--fs-caption); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#th-chips { margin-top: var(--s3); }
+#th-result { margin-top: var(--s4); }
+.th-loading { color: var(--muted); font-size: var(--fs-small); padding: var(--s2) 0; }
+.th-head { display: flex; justify-content: space-between; align-items: flex-end; gap: var(--s3); }
+.th-tk { font-family: var(--serif); font-weight: 400; font-size: var(--fs-title); line-height: 1; margin: var(--s2) 0 var(--s1); }
+.th-name { font-size: var(--fs-caption); color: var(--muted); }
+.th-price { text-align: right; font-size: 20px; font-weight: 300; }
+.th-price .over { margin-bottom: var(--s1); }
+.verdict { display: flex; align-items: center; justify-content: space-between; margin-top: var(--s5); padding: var(--s3) var(--s4);
+  border: 1px solid var(--line-2); border-radius: var(--r-pill); }
+.verdict b { font-size: var(--fs-body); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+.verdict.v-comprar b { color: var(--up); } .verdict.v-vender b { color: var(--down); } .verdict.v-manter b { color: #f2c94c; }
+.verdict.v-dados b { color: var(--muted); }
+.gauges { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s3); margin-top: var(--s3); }
+.gauge { border: 1px solid var(--line); border-radius: var(--r-lg); padding: var(--s4) var(--s3) var(--s3); text-align: center; }
+.g-dial { position: relative; height: 104px; margin-top: var(--s2); }
+.g-dial canvas { width: 100%; height: 100%; display: block; }
+.g-center { position: absolute; left: 0; right: 0; top: 46%; transform: translateY(-50%); text-align: center; }
+.g-center b { display: block; font-size: 34px; font-weight: 300; letter-spacing: -.03em; line-height: 1; }
+.g-label { font-size: var(--fs-caption); font-weight: 600; margin-top: -6px; }
+.g-cov { font-size: 10px; color: var(--faint); margin-top: var(--s1); }
+.reasons { border-left: 2px solid var(--line-2); padding: 2px 0 2px var(--s3); margin: var(--s3) 0 var(--s4); }
+.reasons.up-list { border-color: var(--up); } .reasons.down-list { border-color: var(--down); }
+.reasons ul { margin: var(--s2) 0 0; padding: 0; list-style: none; }
+.reasons li { font-size: var(--fs-small); line-height: 1.5; color: var(--muted); margin-bottom: var(--s2); }
+.reasons li b { color: var(--text); font-weight: 500; }
+.more summary { cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: center; height: var(--control-h);
+  border: 1px solid var(--line-2); border-radius: var(--r-pill); font-size: var(--fs-small); font-weight: 500; color: var(--muted); }
+.more summary::-webkit-details-marker { display: none; }
+.more[open] summary { color: var(--text); border-color: var(--text); }
+.crit { margin-top: var(--s3); border-top: 1px solid var(--line); }
+.crit-row { display: flex; justify-content: space-between; gap: var(--s3); padding: var(--s3) 0; border-bottom: 1px solid var(--line); }
+.crit-l { min-width: 0; }
+.crit-n { font-size: var(--fs-small); font-weight: 500; }
+.crit-note { font-size: var(--fs-caption); color: var(--muted); line-height: 1.45; margin-top: 2px; }
+.crit-r { flex: none; width: 38%; text-align: right; }
+.crit-v { font-size: var(--fs-caption); }
+.crit-bar { height: 4px; border-radius: 4px; background: var(--surface-2); margin-top: 6px; overflow: hidden; }
+.crit-bar i { display: block; height: 100%; border-radius: 4px; }
+.stat .v.small { font-size: var(--fs-caption); line-height: 1.5; white-space: normal; }
+.th-profile { margin-top: var(--s5); padding: var(--s4); border: 1px solid var(--line); border-radius: var(--r-lg); }
+.th-profile b { display: block; font-family: var(--serif); font-weight: 400; font-size: 20px; margin-top: var(--s2); }
+.th-profile p { font-size: var(--fs-small); color: var(--muted); line-height: 1.5; margin: var(--s2) 0 0; }

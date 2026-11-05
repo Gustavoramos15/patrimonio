@@ -80,6 +80,16 @@
       <div class="foot-note">Altas e baixas do dia entre as ações mais negociadas do índice. Cotações com atraso (Yahoo Finance).</div>
     </section>
 
+    <section class="tab" id="tab-thermo">
+      <div class="search">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        <input id="th-input" placeholder="Ticker ou empresa (ex.: WEGE3, Itaú)" autocapitalize="characters" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="suggest" id="th-suggest"></div>
+      <div class="chips" id="th-chips"></div>
+      <div id="th-result"></div>
+    </section>
+
     <section class="tab" id="tab-news">
       <div class="alert-card" id="alert-card">
         <div class="ac-head">
@@ -134,6 +144,10 @@
       <svg viewBox="0 0 24 24"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg>
       <span>Ibovespa</span>
     </button>
+    <button class="tab-btn" data-tab="thermo">
+      <svg viewBox="0 0 24 24"><path d="M14 14.8V5a2 2 0 1 0-4 0v9.8a4 4 0 1 0 4 0z"/><path d="M12 9v7"/></svg>
+      <span>Termômetro</span>
+    </button>
     <button class="tab-btn" data-tab="news">
       <svg viewBox="0 0 24 24"><path d="M4 5h13v14H6a2 2 0 0 1-2-2z"/><path d="M17 9h3v8a2 2 0 0 1-2 2"/><path d="M8 9h5M8 13h5"/></svg>
       <span>Notícias</span>
@@ -155,6 +169,7 @@
 
   <div class="toast" id="toast"></div>
 
+  <script src="thermo.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

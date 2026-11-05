@@ -1253,7 +1253,158 @@ $('#news-chips').onclick = (e) => {
 /* =========================================================
    Navegação & eventos
    ========================================================= */
-const TITLES = { stocks: 'Carteira', ibov: 'Ibovespa', news: 'Notícias', cards: 'Cartões' };
+/* =========================================================
+   Termômetro (motor em thermo.js; dados da CVM via GitHub)
+   ========================================================= */
+const thermoIO = {
+  getJSON: (url) => httpGetJSON(url),
+  price: async (t) => (await fetchSeries(t + '.SA', '1D')).price,
+  history: async (t) => (await fetchSeries(t + '.SA', '5A')).points,
+};
+const thermoCache = {};
+let thermoIndex = null, thermoTicker = null;
+
+async function loadThermoIndex() {
+  if (thermoIndex) return thermoIndex;
+  try {
+    const j = await httpGetJSON(Thermo.DATA_URL + 'index.json');
+    thermoIndex = j.tickers || [];
+    store.set('thermoIndex', thermoIndex);
+  } catch { thermoIndex = store.get('thermoIndex', []); }
+  return thermoIndex;
+}
+
+function renderThermoHome() {
+  const b3 = state.holdings.filter((h) => /\.SA$/.test(h.symbol)).map((h) => display(h.symbol));
+  $('#th-chips').innerHTML = b3.map((t) => `<button data-t="${esc(t)}" class="${t === thermoTicker ? 'on' : ''}">${esc(t)}</button>`).join('');
+  if (!thermoTicker) {
+    $('#th-result').innerHTML = `<div class="empty-state"><strong>Analise uma ação</strong>Busque pelo ticker ou nome da empresa${b3.length ? ', ou toque numa ação da sua carteira' : ''}. O termômetro calcula os indicadores a partir dos balanços oficiais entregues à CVM.</div>`;
+  }
+  loadThermoIndex();
+}
+
+const ARC_START = Math.PI * 0.8, ARC_SWEEP = Math.PI * 1.4; // arco de 252°, aberto embaixo
+function drawGauge(canvas, score) {
+  const { ctx, w, h } = setupCanvas(canvas);
+  const cx = w / 2, cy = h * 0.58, r = Math.min(w / 2, h * 0.58) - 10, lw = 10;
+  const segs = [0, 20, 40, 60, 80, 100].map((v) => ARC_START + (v / 100) * ARC_SWEEP);
+  const colors = ['#f2545b', '#f2884b', '#f2c94c', '#3ecf8e', '#16a864'];
+  ctx.lineCap = 'butt'; ctx.lineWidth = lw;
+  for (let i = 0; i < 5; i++) { // faixas apagadas
+    ctx.beginPath(); ctx.arc(cx, cy, r, segs[i] + 0.02, segs[i + 1] - 0.02);
+    ctx.strokeStyle = colors[i] + '33'; ctx.stroke();
+  }
+  if (score == null) return;
+  const end = ARC_START + (score / 100) * ARC_SWEEP;
+  for (let i = 0; i < 5 && segs[i] < end; i++) { // faixas preenchidas até a nota
+    ctx.beginPath(); ctx.arc(cx, cy, r, segs[i] + 0.02, Math.min(end, segs[i + 1] - 0.02));
+    ctx.strokeStyle = colors[i]; ctx.stroke();
+  }
+  const mx = cx + Math.cos(end) * r, my = cy + Math.sin(end) * r; // marcador
+  ctx.beginPath(); ctx.arc(mx, my, lw * 0.75, 0, Math.PI * 2);
+  ctx.fillStyle = '#0a0a0a'; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = Thermo.band(score).color; ctx.stroke();
+}
+
+function gaugeCard(id, title, part) {
+  const b = Thermo.band(part.score);
+  return `<div class="gauge">
+    <div class="over">${title}</div>
+    <div class="g-dial"><canvas id="${id}"></canvas><div class="g-center"><b>${part.score == null ? '—' : part.score}</b></div></div>
+    <div class="g-label" style="color:${b.color}">${b.label}</div>
+    <div class="g-cov">${part.coverage}% dos dados disponíveis</div>
+  </div>`;
+}
+
+function reasonsBlock(r) {
+  const li = (x) => `<li><b>${esc(x.name)}.</b> ${esc(x.text)}</li>`;
+  return `${r.favor.length ? `<div class="reasons up-list"><div class="over">${r.favorTitle}</div><ul>${r.favor.map(li).join('')}</ul></div>` : ''}
+    ${r.contra.length ? `<div class="reasons down-list"><div class="over">${r.contraTitle}</div><ul>${r.contra.map(li).join('')}</ul></div>` : ''}`;
+}
+
+function criteriaTable(list) {
+  return `<div class="crit">${list.filter((c) => c.weight > 0).map((c) => {
+    const b = Thermo.band(c.score);
+    return `<div class="crit-row">
+      <div class="crit-l"><div class="crit-n">${esc(c.name)}</div><div class="crit-note">${esc(c.note)}</div></div>
+      <div class="crit-r"><div class="crit-v">${esc(c.value)}</div>
+        <div class="crit-bar"><i style="width:${c.score == null ? 0 : Math.round(c.score)}%;background:${b.color}"></i></div></div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function renderThermoResult(a) {
+  const fmtRef = (iso) => (iso ? new Date(iso + 'T12:00:00').toLocaleDateString('pt-BR') : '—');
+  const methods = { graham: 'Graham', bazin: 'Bazin', hist: 'P/L histórico' };
+  $('#th-result').innerHTML = `
+    <div class="th-head">
+      <div><div class="over">${esc(a.setor || '')}</div><h2 class="th-tk">${esc(a.ticker)}</h2><div class="th-name">${esc(a.nome || '')}</div></div>
+      <div class="th-price"><div class="over">Cotação</div><div>${fmtMoney(a.price)}</div></div>
+    </div>
+    <div class="verdict v-${a.verdict.key}"><span class="over">Sinal geral</span><b>${esc(a.verdict.label)}</b></div>
+    <div class="gauges">${gaugeCard('g-buy', 'Termômetro de compra', a.buy)}${gaugeCard('g-sell', 'Termômetro de venda', a.sell)}</div>
+
+    <div class="section-head"><h2>Compra</h2></div>
+    ${reasonsBlock(a.buy.reasons)}
+    <details class="more"><summary>Ver os ${a.buy.criteria.filter((c) => c.weight).length} critérios de compra</summary>${criteriaTable(a.buy.criteria)}</details>
+
+    <div class="section-head"><h2>Venda</h2></div>
+    ${reasonsBlock(a.sell.reasons)}
+    <details class="more"><summary>Ver os ${a.sell.criteria.filter((c) => c.weight).length} critérios de venda</summary>${criteriaTable(a.sell.criteria)}</details>
+
+    <div class="section-head"><h2>Valor justo</h2></div>
+    <div class="stats">
+      <div class="stat"><div class="k">Preço atual</div><div class="v">${fmtMoney(a.price)}</div></div>
+      <div class="stat"><div class="k">Valor justo</div><div class="v">${a.fair ? fmtMoney(a.fair) : '—'}</div></div>
+      <div class="stat"><div class="k">Margem de segurança</div><div class="v ${a.mos == null ? '' : tone(a.mos)}">${a.mos == null ? '—' : fmtPct(a.mos).replace(',00', '')}</div></div>
+      <div class="stat"><div class="k">Métodos</div><div class="v small">${Object.entries(a.fairMethods).map(([k, v]) => `${methods[k]} ${fmtMoney(v)}`).join('<br>') || '—'}</div></div>
+    </div>
+    <p class="foot-note">Valor justo = mediana dos métodos que se aplicam ao setor. Graham: √(22,5 × LPA × VPA). Bazin: média dos dividendos dos últimos 3 anos ÷ 6%. P/L histórico: lucro por ação × mediana do P/L de 5 anos.</p>
+
+    <div class="th-profile"><div class="over">Critérios ajustados ao setor</div><b>${esc(a.profileLabel)}</b>${a.profileNote ? `<p>${esc(a.profileNote)}</p>` : ''}</div>
+
+    <p class="foot-note">Fonte: ${esc(a.fonte || 'CVM')}. Balanços até ${fmtRef(a.ref)}; cotação com atraso (Yahoo Finance). Indicadores calculados pelo app a partir das contas oficiais, então podem diferir um pouco de outros sites.<br><br>
+    Análise automática para estudo, baseada só em números do passado. <b>Não é recomendação de investimento.</b></p>`;
+  requestAnimationFrame(() => { drawGauge($('#g-buy'), a.buy.score); drawGauge($('#g-sell'), a.sell.score); });
+}
+
+let thermoReq = 0;
+async function analyzeThermo(ticker) {
+  ticker = ticker.toUpperCase().replace(/\.SA$/, '');
+  thermoTicker = ticker; $('#th-suggest').innerHTML = ''; $('#th-input').value = ''; $('#th-input').blur();
+  renderThermoHome();
+  const req = ++thermoReq;
+  const hit = thermoCache[ticker];
+  if (hit && Date.now() - hit.at < 10 * 60 * 1000) return renderThermoResult(hit.a);
+  $('#th-result').innerHTML = `<div class="th-loading"><span class="spin"></span>Analisando ${esc(ticker)} com os balanços da CVM…</div>${skeleton(4)}`;
+  try {
+    const a = await Thermo.analyze(ticker, thermoIO);
+    if (req !== thermoReq) return;
+    thermoCache[ticker] = { at: Date.now(), a };
+    renderThermoResult(a);
+  } catch (e) {
+    if (req !== thermoReq) return;
+    $('#th-result').innerHTML = `<div class="empty-state"><strong>Não deu para analisar ${esc(ticker)}</strong>${esc(e.message || 'Verifique a conexão e tente de novo.')}</div>`;
+  }
+}
+
+$('#th-input').addEventListener('input', async (e) => {
+  const q = e.target.value.trim().toLowerCase();
+  if (q.length < 2) { $('#th-suggest').innerHTML = ''; return; }
+  const idx = await loadThermoIndex();
+  const norm = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  const nq = norm(q);
+  const hits = idx.filter((x) => x.t.toLowerCase().startsWith(nq) || norm(x.n).includes(nq)).slice(0, 6);
+  $('#th-suggest').innerHTML = hits.map((x) => `<button data-t="${esc(x.t)}"><b>${esc(x.t)}</b><span>${esc(x.n)}</span></button>`).join('');
+});
+$('#th-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && e.target.value.trim()) analyzeThermo(e.target.value.trim());
+});
+$('#tab-thermo').addEventListener('click', (e) => {
+  const b = e.target.closest('#th-suggest button, #th-chips button');
+  if (b) analyzeThermo(b.dataset.t);
+});
+
+const TITLES = { stocks: 'Carteira', ibov: 'Ibovespa', thermo: 'Termômetro', news: 'Notícias', cards: 'Cartões' };
 function switchTab(name) {
   document.querySelectorAll('.tab-btn').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
   document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.id === 'tab-' + name));
@@ -1262,6 +1413,7 @@ function switchTab(name) {
   if (name === 'stocks') requestAnimationFrame(() => { renderStocks(); renderPortfolioChart(); });
   if (name === 'ibov') requestAnimationFrame(renderIbov);
   if (name === 'news') renderNews();
+  if (name === 'thermo') renderThermoHome();
 }
 $('#ibov-ranges').onclick = (e) => {
   const b = e.target.closest('button'); if (!b) return;
