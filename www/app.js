@@ -56,6 +56,8 @@ const normalizeSymbol = (raw) => {
 };
 const toBRL = (v, cur) => (cur === 'USD' ? v * state.settings.usd : v);
 
+const skeleton = (n) => '<div class="skel"><i></i><i></i></div>'.repeat(n);
+
 function toast(msg) {
   const t = $('#toast');
   t.textContent = msg;
@@ -213,7 +215,7 @@ const fmtUnit = (v, cur) => new Intl.NumberFormat('pt-BR', { style: 'currency', 
 function provRow(h, p, showTicker = true) {
   const type = shortType(p.type);
   return `<div class="entry">
-    <div class="e-l"><div class="e-t">${showTicker ? esc(display(h.symbol)) : ''}<span class="badge ${type === 'JCP' ? 'solid' : ''}"${showTicker ? '' : ' style="margin-left:0"'}>${esc(type)}</span></div>
+    <div class="e-l"><div class="e-t">${showTicker ? esc(display(h.symbol)) : ''}<span class="badge ${type === 'JCP' ? 'solid' : ''} ${showTicker ? '' : 'flush'}">${esc(type)}</span></div>
       <div class="e-s">Data com ${fmtShort(p.ex)} · Pgto ${fmtShort(p.pay)}</div></div>
     <div class="e-r"><div class="e-p">${fmtMoney(h.qty * p.value, p.currency)}</div><div class="x">${fmtUnit(p.value, p.currency)}/ação</div></div>
   </div>`;
@@ -326,7 +328,7 @@ function drawLine(canvas, points, opts = {}) {
     ctx.fillStyle = g; ctx.fill();
 
     // rótulos min/max
-    ctx.font = '10px Roboto, sans-serif'; ctx.fillStyle = '#5a5a58';
+    ctx.font = '500 10px Inter, sans-serif'; ctx.fillStyle = '#5a5a58';
     const fmt = opts.format || ((v) => fmtNum(v, 2));
     ctx.textAlign = 'right';
     ctx.fillText(fmt(max), w - 8, padT - 4);
@@ -379,7 +381,7 @@ function drawBars(canvas, items) { // items: [{label, v}]
   const { ctx, w, h } = setupCanvas(canvas);
   const max = Math.max(1, ...items.map((i) => i.v));
   const gap = 10, bw = (w - gap * (items.length - 1)) / items.length, base = h - 18;
-  ctx.font = '10px Roboto, sans-serif'; ctx.textAlign = 'center';
+  ctx.font = '500 10px Inter, sans-serif'; ctx.textAlign = 'center';
   items.forEach((it, i) => {
     const bh = Math.max(2, (it.v / max) * (base - 16));
     const bx = i * (bw + gap);
@@ -577,6 +579,7 @@ function closeSheet(fromPop) {
 }
 window.addEventListener('popstate', () => closeSheet(true));
 $('.sheet-backdrop').addEventListener('click', () => closeSheet());
+$('#sheet-close').addEventListener('click', () => closeSheet());
 
 /* ---------- Adicionar / editar ação ---------- */
 function stockForm(h, prefill = '') {
@@ -654,9 +657,9 @@ function stockDetail(h) {
       <div class="stat"><div class="k">Posição</div><div class="v">${fmtMoney(pos, cur)}</div></div>
       <div class="stat"><div class="k">Resultado</div><div class="v">${arrow(res)} ${fmtMoney(Math.abs(res), cur)} · ${fmtPct(resPct)}</div></div>
     </div>
-    <div class="section-head" style="margin-top:22px"><h2>Proventos</h2></div>
-    <div class="entries" id="d-prov"><div class="empty"><span class="spin"></span>Buscando dividendos e JCP…</div></div>
-    <div class="btn-row" style="margin-top:16px"><button class="btn ghost" id="d-edit">Editar</button><button class="btn ghost" id="d-del">Remover ação</button></div>
+    <div class="section-head"><h2>Proventos</h2></div>
+    <div class="entries" id="d-prov">${skeleton(3)}</div>
+    <div class="btn-row"><button class="btn ghost" id="d-edit">Editar</button><button class="btn ghost" id="d-del">Remover ação</button></div>
   `, (el) => {
     fetchProvents(h.symbol).then((list) => {
       const sorted = [...list].sort((a, b) => (b.pay || b.ex) - (a.pay || a.ex)).slice(0, 12);
@@ -727,7 +730,7 @@ function monthlyPoints(card, months = 6) {
 function renderCards() {
   let pts = 0, miles = 0, value = 0, spent = 0;
   state.cards.forEach((c) => { const t = cardTotals(c); pts += t.points; miles += t.miles; value += t.value; spent += t.spent; });
-  $('#cards-points').innerHTML = `${fmtNum(pts)}<small style="margin-left:8px">pts</small>`;
+  $('#cards-points').innerHTML = `${fmtNum(pts)}<small class="suf">pts</small>`;
   $('#cards-sub').innerHTML = state.cards.length
     ? `≈ <b>${fmtNum(miles)} milhas</b> &nbsp;·&nbsp; ${state.cards.length} ${state.cards.length > 1 ? 'cartões' : 'cartão'}`
     : 'Nenhum cartão cadastrado';
@@ -803,20 +806,20 @@ function cardDetail(card) {
   const months = new Set(card.entries.filter((e) => e.type !== 'bonus').map((e) => e.date.slice(0, 7))).size;
   const pace = months ? card.entries.filter((e) => e.type !== 'bonus').reduce((s, e) => s + entryPoints(card, e), 0) / months : 0;
   openSheet(`
-    <div class="ccard ${card.color}" style="margin-top:6px">
+    <div class="ccard ${card.color}">
       <div class="c-top"><div><div class="c-name">${esc(card.name)}</div><div class="c-prog">${esc(card.program)}</div></div><div class="chip"></div></div>
       <div class="c-pts">${fmtNum(t.points)}<span>pontos</span></div>
       <div class="c-bottom"><span>≈ ${fmtNum(t.miles)} milhas</span><span>${fmtMoney(t.value)}</span></div>
     </div>
-    <div class="stats" style="margin-top:4px">
+    <div class="stats">
       <div class="stat"><div class="k">Gasto lançado</div><div class="v">${fmtMoney(t.spent)}</div></div>
       <div class="stat"><div class="k">Ritmo mensal</div><div class="v">${fmtNum(pace)} pts</div></div>
       <div class="stat"><div class="k">Pontos por US$</div><div class="v">${fmtNum(card.ptsPerUsd, 1)}</div></div>
       <div class="stat"><div class="k">Projeção 12m</div><div class="v">${fmtNum(pace * 12)} pts</div></div>
     </div>
-    <div class="section-head" style="margin-top:20px"><h2>Pontos por mês</h2></div>
+    <div class="section-head"><h2>Pontos por mês</h2></div>
     <div class="bars"><canvas id="cd-bars"></canvas></div>
-    <div class="btn-row" style="margin-top:14px">
+    <div class="btn-row">
       <button class="btn" id="cd-add">+ Lançar gasto</button>
       <button class="btn ghost" id="cd-edit">Editar cartão</button>
     </div>
@@ -826,8 +829,8 @@ function cardDetail(card) {
         <div class="e-l"><div class="e-t">${esc(e.desc || (e.type === 'bonus' ? 'Bônus de pontos' : 'Gasto'))}</div>
           <div class="e-s">${fmtDate(e.date + 'T12:00:00')}${e.type === 'bonus' ? ' · bônus' : ' · ' + fmtMoney(e.amount) + ' · US$ ' + fmtNum(e.usd, 2)}</div></div>
         <div class="e-r"><div class="e-p">+${fmtNum(entryPoints(card, e))} pts</div><button class="x" data-del="${e.id}">remover</button></div>
-      </div>`).join('') : '<p class="hint" style="padding-top:14px">Nenhum lançamento. Lance o valor de cada fatura ou compra.</p>'}</div>
-    <button class="btn ghost" id="cd-del" style="margin-top:18px">Remover cartão</button>
+      </div>`).join('') : '<div class="empty">Nenhum lançamento. Lance o valor de cada fatura ou compra.</div>'}</div>
+    <button class="btn danger" id="cd-del">Remover cartão</button>
   `, (el) => {
     drawBars($('#cd-bars', el), monthlyPoints(card));
     $('#cd-add', el).onclick = () => { closeSheet(); setTimeout(() => entryForm(card), 350); };
@@ -853,14 +856,14 @@ function entryForm(card) {
       <div class="field" id="w-usd"><label>Dólar (R$)</label><input id="e-usd" inputmode="decimal" value="${String(state.settings.usd.toFixed(2)).replace('.', ',')}"></div>
     </div>
     <div class="field"><label>Descrição</label><input id="e-desc" placeholder="Fatura de outubro"></div>
-    <div class="hint" id="e-preview" style="margin-top:-2px">&nbsp;</div>
+    <div class="preview" id="e-preview">&nbsp;</div>
     <button class="btn" id="e-save">Lançar</button>
   `, (el) => {
     const preview = () => {
       if (type === 'bonus') { $('#e-preview', el).innerHTML = '&nbsp;'; return; }
       const a = numLoose($('#e-amount', el).value), u = numLoose($('#e-usd', el).value);
       $('#e-preview', el).innerHTML = a > 0 && u > 0
-        ? `Gera <b style="color:var(--text)">${fmtNum((a / u) * card.ptsPerUsd)} pontos</b> ≈ ${fmtNum((a / u) * card.ptsPerUsd * card.ratio)} milhas`
+        ? `Gera <b>${fmtNum((a / u) * card.ptsPerUsd)} pontos</b> ≈ ${fmtNum((a / u) * card.ptsPerUsd * card.ratio)} milhas`
         : '&nbsp;';
     };
     $('#e-amount', el).oninput = preview; $('#e-usd', el).oninput = preview;
@@ -995,7 +998,7 @@ async function renderIbov() {
     const ch = dayChange(today);
     const heroDefault = () => {
       $('#ibov-label').textContent = 'Ibovespa · B3' + (today.offline ? ' · offline' : '');
-      $('#ibov-value').innerHTML = `${fmtNum(today.price, 0)}<small style="margin-left:8px">pts</small>`;
+      $('#ibov-value').innerHTML = `${fmtNum(today.price, 0)}<small class="suf">pts</small>`;
       $('#ibov-delta').innerHTML = `<b>${arrow(ch.diff)} ${fmtNum(Math.abs(ch.diff), 0)} pts</b> &nbsp;${fmtPct(ch.pct)} hoje`;
     };
     heroDefault();
@@ -1005,7 +1008,7 @@ async function renderIbov() {
     makeScrubbable(canvas, (p, all) => {
       const base = intraday ? ch.prev : all[0].v, diff = p.v - base;
       $('#ibov-label').textContent = intraday ? 'Hoje às ' + fmtTime(p.t) : fmtDate(p.t);
-      $('#ibov-value').innerHTML = `${fmtNum(p.v, 0)}<small style="margin-left:8px">pts</small>`;
+      $('#ibov-value').innerHTML = `${fmtNum(p.v, 0)}<small class="suf">pts</small>`;
       $('#ibov-delta').innerHTML = `<b>${arrow(diff)} ${fmtNum(Math.abs(diff), 0)} pts</b> &nbsp;${fmtPct((diff / base) * 100)} ${intraday ? 'no dia' : 'no período'}`;
     }, heroDefault);
     const pts = d.points.map((p) => p.v);
@@ -1026,6 +1029,7 @@ async function renderIbov() {
 
 async function renderIndicators() {
   const el = $('#ibov-indicators');
+  if (!el.children.length) el.innerHTML = skeleton(INDICATORS.length);
   const series = {};
   await Promise.all(INDICATORS.map((i) => fetchSeries(i.symbol, '1M').then((d) => (series[i.symbol] = d)).catch(() => {})));
   el.innerHTML = INDICATORS.map((i) => quoteRow(i.symbol, i.label, i.sub, series[i.symbol])).join('');
@@ -1034,6 +1038,7 @@ async function renderIndicators() {
 
 async function renderMovers() {
   $('#movers-status').innerHTML = '<span class="spin"></span>';
+  if (!$('#ibov-up').children.length) { $('#ibov-up').innerHTML = skeleton(5); $('#ibov-down').innerHTML = skeleton(5); }
   const series = {};
   await Promise.all(IBOV_STOCKS.map((s) => fetchSeries(s, '1M').then((d) => (series[s] = d)).catch(() => {})));
   const ranked = Object.entries(series)
@@ -1154,11 +1159,11 @@ async function renderNews() {
     ? ['all', ...tickers].map((t) => `<button data-f="${esc(t)}" class="${t === newsFilter ? 'on' : ''}">${t === 'all' ? 'Todas' : esc(t)}</button>`).join('')
     : '';
   if (newsFeed === 'mine' && !tickers.length) {
-    list.innerHTML = `<div class="empty-state" style="margin-top:8px"><strong>Sem ações na carteira</strong>Adicione ações na aba Ações para ver as notícias delas aqui.</div>`;
+    list.innerHTML = `<div class="empty-state"><strong>Sem ações na carteira</strong>Adicione ações na aba Ações para ver as notícias delas aqui.</div>`;
     return;
   }
   const req = ++newsReq;
-  if (!list.querySelector('.news-item')) list.innerHTML = '<p class="hint" style="padding:18px 0"><span class="spin"></span>Buscando notícias…</p>';
+  if (!list.querySelector('.news-item')) list.innerHTML = skeleton(5);
   let items = [];
   if (newsFeed === 'mine') {
     const wanted = newsFilter === 'all' || !tickers.includes(newsFilter) ? tickers : [newsFilter];
@@ -1178,7 +1183,7 @@ async function renderNews() {
       <div class="n-meta">${i.tag ? `<span class="badge solid">${esc(i.tag)}</span>` : ''}<span>${esc(i.source)}</span><span>·</span><span>${relTime(i.t)}</span></div>
       <div class="n-title">${esc(i.title)}</div>
     </a>`).join('')
-    : '<div class="empty-state" style="margin-top:8px"><strong>Nada por aqui</strong>Não encontramos notícias recentes. Verifique a conexão e tente de novo.</div>';
+    : '<div class="empty-state"><strong>Nada por aqui</strong>Não encontramos notícias recentes. Verifique a conexão e tente de novo.</div>';
   state.settings.newsSeenAt = Date.now(); save.settings();
 }
 
@@ -1272,9 +1277,12 @@ window.addEventListener('resize', () => {
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshQuotes(); });
 
 function greet() {
-  const h = new Date().getHours();
-  $('#greeting').textContent = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+  const now = new Date(), h = now.getHours();
+  const hello = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+  const day = now.toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short' }).replace(/\./g, '');
+  $('#greeting').textContent = `${hello} · ${day}`;
 }
+window.addEventListener('scroll', () => $('.top').classList.toggle('compact', window.scrollY > 24), { passive: true });
 
 (async function init() {
   greet();
