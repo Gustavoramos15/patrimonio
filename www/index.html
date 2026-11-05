@@ -56,6 +56,46 @@
       </div>
     </section>
 
+    <section class="tab" id="tab-ibov">
+      <div class="hero">
+        <div class="label" id="ibov-label">Ibovespa · B3</div>
+        <div class="big" id="ibov-value">—</div>
+        <div class="delta" id="ibov-delta">&nbsp;</div>
+      </div>
+      <div class="chart-wrap empty">
+        <canvas id="ibov-chart"></canvas>
+        <div class="chart-empty" id="ibov-empty">Carregando…</div>
+      </div>
+      <div class="ranges" id="ibov-ranges"></div>
+      <div class="stats" id="ibov-stats"></div>
+
+      <div class="section-head"><h2>Indicadores</h2></div>
+      <div class="list" id="ibov-indicators"></div>
+
+      <div class="section-head"><h2>Maiores altas</h2><span class="tag-muted" id="movers-status"></span></div>
+      <div class="list" id="ibov-up"></div>
+      <div class="section-head"><h2>Maiores baixas</h2></div>
+      <div class="list" id="ibov-down"></div>
+      <div class="foot-note">Altas e baixas do dia entre as ações mais negociadas do índice. Cotações com atraso (Yahoo Finance).</div>
+    </section>
+
+    <section class="tab" id="tab-news">
+      <div class="alert-card" id="alert-card">
+        <div>
+          <div class="ac-title">Alertas no celular</div>
+          <div class="ac-sub" id="alert-sub">Receba uma notificação quando sair notícia das ações da sua carteira.</div>
+        </div>
+        <button class="switch" id="alert-switch" role="switch" aria-checked="false" aria-label="Alertas de notícias"><i></i></button>
+      </div>
+      <div class="seg" id="news-seg" style="margin-top:18px">
+        <button class="on" data-feed="mine">Minha carteira</button>
+        <button data-feed="market">Mercado</button>
+      </div>
+      <div class="chips" id="news-chips"></div>
+      <div id="news-list"></div>
+      <div class="foot-note" id="news-foot">Fonte: Google Notícias. Toque para abrir a matéria.</div>
+    </section>
+
     <section class="tab" id="tab-cards">
       <div class="hero">
         <div class="label">Pontos acumulados</div>
@@ -81,6 +121,14 @@
     <button class="tab-btn active" data-tab="stocks">
       <svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg>
       <span>Ações</span>
+    </button>
+    <button class="tab-btn" data-tab="ibov">
+      <svg viewBox="0 0 24 24"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg>
+      <span>Ibovespa</span>
+    </button>
+    <button class="tab-btn" data-tab="news">
+      <svg viewBox="0 0 24 24"><path d="M4 5h13v14H6a2 2 0 0 1-2-2z"/><path d="M17 9h3v8a2 2 0 0 1-2 2"/><path d="M8 9h5M8 13h5"/></svg>
+      <span>Notícias</span>
     </button>
     <button class="tab-btn" data-tab="cards">
       <svg viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M2.5 10h19"/><path d="M6 15h4"/></svg>
