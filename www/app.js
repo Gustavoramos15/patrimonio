@@ -274,7 +274,7 @@ function renderAlloc() {
   sec.hidden = false;
   const items = state.holdings.map((h) => {
     const q = state.quotes[h.symbol];
-    return { label: display(h.symbol), v: toBRL(h.qty * (q ? q.price : h.avg), q ? q.currency : h.currency) };
+    return { label: display(h.symbol), v: toBRL(h.qty * (q ? q.price : h.avg ?? 0), q ? q.currency : h.currency) };
   });
   renderDonut($('#alloc'), items, items.length > 1 ? 'ativos' : 'ativo', (v) => fmtMoney(v));
 }
@@ -454,16 +454,20 @@ function renderDonut(el, rawItems, centerSub, fmtV) {
 /* =========================================================
    Ações — render
    ========================================================= */
+// preço médio pode ser desconhecido (ação importada da B3 sem extrato de negociação)
+const hasAvg = (h) => h.avg != null && isFinite(h.avg);
+
 function portfolioTotals() {
-  let value = 0, invested = 0, dayPrev = 0, priced = 0;
+  let value = 0, invested = 0, valueWithCost = 0, dayPrev = 0, priced = 0, noCost = 0;
   for (const h of state.holdings) {
     const q = state.quotes[h.symbol];
     const cur = q ? q.currency : (h.currency || 'BRL');
-    invested += toBRL(h.qty * h.avg, cur);
-    if (q) { value += toBRL(h.qty * q.price, cur); dayPrev += toBRL(h.qty * q.prev, cur); priced++; }
-    else value += toBRL(h.qty * h.avg, cur);
+    const v = toBRL(h.qty * (q ? q.price : hasAvg(h) ? h.avg : 0), cur);
+    value += v;
+    if (q) { dayPrev += toBRL(h.qty * q.prev, cur); priced++; }
+    if (hasAvg(h)) { invested += toBRL(h.qty * h.avg, cur); valueWithCost += v; } else noCost++;
   }
-  return { value, invested, dayPrev, priced };
+  return { value, invested, valueWithCost, dayPrev, priced, noCost };
 }
 
 function setHero(value, sub) {
@@ -487,16 +491,16 @@ function renderStocks() {
   renderAlloc();
   renderProvents();
   const t = portfolioTotals();
-  const res = t.value - t.invested, resPct = t.invested ? (res / t.invested) * 100 : 0;
+  const res = t.valueWithCost - t.invested, resPct = t.invested ? (res / t.invested) * 100 : 0;
   $('#portfolio-stats').innerHTML = state.holdings.length ? `
     <div class="stat"><div class="k">Investido</div><div class="v">${fmtMoney(t.invested)}</div></div>
     <div class="stat"><div class="k">Resultado</div><div class="v ${tone(res)}">${arrow(res)} ${fmtPct(resPct)}</div></div>
     <div class="stat"><div class="k">Lucro / Prejuízo</div><div class="v">${fmtMoney(res)}</div></div>
-    <div class="stat"><div class="k">Ativos</div><div class="v">${state.holdings.length}</div></div>` : '';
+    <div class="stat"><div class="k">Ativos</div><div class="v">${state.holdings.length}${t.noCost ? ` <span class="tag-muted">· ${t.noCost} sem PM</span>` : ""}</div></div>` : '';
 
   const list = $('#stock-list');
   if (!state.holdings.length) {
-    list.innerHTML = `<div class="empty-state"><strong>Sua carteira está vazia</strong>Toque em “+ Adicionar” e informe o ticker (ex.: PETR4, ITUB4, AAPL), a quantidade e o preço médio.</div>`;
+    list.innerHTML = `<div class="empty-state"><strong>Sua carteira está vazia</strong>Toque em “Importar da B3” para trazer as ações de todas as corretoras, ou em “+ Adicionar” para incluir uma a uma.</div>`;
     list.style.borderTop = '0';
     $('#stock-updated').textContent = '';
     $('#prov-section').hidden = true; provData = [];
@@ -505,7 +509,7 @@ function renderStocks() {
   list.style.borderTop = '';
   const sorted = [...state.holdings].sort((a, b) => {
     const qa = state.quotes[a.symbol], qb = state.quotes[b.symbol];
-    return toBRL(b.qty * (qb ? qb.price : b.avg), qb && qb.currency) - toBRL(a.qty * (qa ? qa.price : a.avg), qa && qa.currency);
+    return toBRL(b.qty * (qb ? qb.price : b.avg ?? 0), qb && qb.currency) - toBRL(a.qty * (qa ? qa.price : a.avg ?? 0), qa && qa.currency);
   });
   list.innerHTML = sorted.map((h) => {
     const q = state.quotes[h.symbol];
@@ -513,7 +517,7 @@ function renderStocks() {
     const chg = q && q.prev ? ((q.price - q.prev) / q.prev) * 100 : null;
     return `<button class="row" data-id="${h.id}">
       <div><div class="sym">${esc(display(h.symbol))}</div>
-        <div class="sub">${fmtNum(h.qty, h.qty % 1 ? 2 : 0)} un · ${q ? fmtMoney(h.qty * q.price, cur) : 'PM ' + fmtMoney(h.avg, cur)}</div></div>
+        <div class="sub">${fmtNum(h.qty, h.qty % 1 ? 2 : 0)} un · ${q ? fmtMoney(h.qty * q.price, cur) : hasAvg(h) ? 'PM ' + fmtMoney(h.avg, cur) : 'sem preço médio'}</div></div>
       <canvas data-spark="${esc(h.symbol)}"></canvas>
       <div class="right"><div class="price">${q ? fmtMoney(q.price, cur) : '—'}</div>
         <div class="chg ${chg == null ? '' : tone(chg)}">${chg == null ? '' : arrow(chg) + ' ' + fmtPct(chg)}</div></div>
@@ -596,7 +600,7 @@ function stockForm(h, prefill = '') {
     ${editing ? '' : `<div class="field"><label>Ticker</label><input id="f-sym" placeholder="PETR4" autocapitalize="characters" autocomplete="off" value="${esc(prefill)}"></div>`}
     <div class="grid2">
       <div class="field"><label>Quantidade</label><input id="f-qty" inputmode="decimal" placeholder="100" value="${editing ? String(h.qty).replace('.', ',') : ''}"></div>
-      <div class="field"><label>Preço médio</label><input id="f-avg" inputmode="decimal" placeholder="38,50" value="${editing ? String(h.avg).replace('.', ',') : ''}"></div>
+      <div class="field"><label>Preço médio <span class="opt">(opcional)</span></label><input id="f-avg" inputmode="decimal" placeholder="38,50" value="${editing && hasAvg(h) ? String(h.avg).replace('.', ',') : ''}"></div>
     </div>
     <button class="btn" id="f-save">${editing ? 'Salvar' : 'Adicionar à carteira'}</button>
     ${editing ? '<button class="btn danger" id="f-del">Remover posição</button>' : ''}
@@ -604,9 +608,10 @@ function stockForm(h, prefill = '') {
     const first = $('#f-sym', el) || $('#f-qty', el);
     first && first.focus();
     $('#f-save', el).onclick = async () => {
-      const qty = numLoose($('#f-qty', el).value), avg = numLoose($('#f-avg', el).value);
+      const qty = numLoose($('#f-qty', el).value);
+      const avgRaw = $('#f-avg', el).value.trim(), avg = avgRaw ? numLoose(avgRaw) : null;
       if (!(qty > 0)) return toast('Informe a quantidade');
-      if (!(avg >= 0)) return toast('Informe o preço médio');
+      if (avg != null && !(avg >= 0)) return toast('Preço médio inválido');
       if (editing) {
         Object.assign(h, { qty, avg }); save.holdings();
         closeSheet(); renderStocks(); renderPortfolioChart(); toast('Posição atualizada');
@@ -622,7 +627,7 @@ function stockForm(h, prefill = '') {
       const existing = state.holdings.find((x) => x.symbol === symbol);
       if (existing) { // consolida preço médio
         const total = existing.qty + qty;
-        existing.avg = (existing.qty * existing.avg + qty * avg) / total;
+        existing.avg = hasAvg(existing) && avg != null ? (existing.qty * existing.avg + qty * avg) / total : null;
         existing.qty = total;
       } else {
         state.holdings.push({ id: uid(), symbol, qty, avg, currency, name });
@@ -642,13 +647,114 @@ function removeHolding(h) {
   closeSheet(); renderStocks(); renderPortfolioChart(); toast(display(h.symbol) + ' removida');
 }
 
+/* ---------- Importar da B3 (Área do Investidor) ---------- */
+const ACTION_LABEL = { novo: 'Novo', atualizar: 'Atualizar', remover: 'Remover', igual: 'Sem mudança', manter: 'Mantido' };
+
+function importSheet() {
+  openSheet(`
+    <h3>Importar da B3</h3>
+    <p class="hint">Traga as ações de todas as suas corretoras pelos relatórios da Área do Investidor da B3.</p>
+    <ol class="steps">
+      <li>Entre na <b>Área do Investidor</b> da B3 (app B3 Investidor ou investidor.b3.com.br).</li>
+      <li>Em <b>Extratos → Posição</b>, baixe a planilha em Excel.</li>
+      <li><span class="opt">Opcional, para o preço médio:</span> em <b>Extratos → Negociação</b>, escolha o período desde a sua primeira compra e baixe também.</li>
+      <li>Escolha os arquivos abaixo — pode selecionar os dois de uma vez.</li>
+    </ol>
+    <input type="file" id="imp-file" accept=".xlsx,.csv" multiple hidden>
+    <button class="btn" id="imp-pick">Escolher arquivos</button>
+    <p class="foot-note">Os arquivos são lidos só neste celular; nada é enviado para servidor nenhum. Os nomes dos menus da B3 podem mudar um pouco.</p>
+    <div id="imp-preview"></div>
+  `, (el) => {
+    const input = $('#imp-file', el);
+    $('#imp-pick', el).onclick = () => input.click();
+    input.onchange = async () => {
+      const files = [...input.files];
+      if (!files.length) return;
+      const box = $('#imp-preview', el);
+      box.innerHTML = `<p class="hint"><span class="spin"></span>Lendo ${files.length > 1 ? files.length + ' arquivos' : 'o arquivo'}…</p>`;
+      const workbooks = [], errors = [];
+      for (const f of files) {
+        try { workbooks.push({ file: f.name, sheets: await XlsxLite.readSpreadsheet(f.name, await f.arrayBuffer()) }); }
+        catch (e) { errors.push(`${f.name}: ${e.message || 'não foi possível ler'}`); }
+      }
+      input.value = '';
+      renderImportPreview(box, B3Import.parse(workbooks), errors);
+    };
+  });
+}
+
+function renderImportPreview(box, parsed, errors) {
+  let removeMissing = false;
+  const typed = {}; // preço médio digitado na prévia
+  const draw = () => {
+    const items = B3Import.plan(parsed, state.holdings, { removeMissing });
+    const hasPos = Object.keys(parsed.positions).length > 0;
+    const kinds = { posicao: 'Posição', negociacao: 'Negociação', movimentacao: 'Movimentação' };
+    const partial = items.filter((i) => i.partial).map((i) => i.ticker);
+    const changes = items.filter((i) => ['novo', 'atualizar', 'remover'].includes(i.action) || typed[i.ticker] != null);
+    box.innerHTML = `
+      ${errors.map((e) => `<p class="imp-warn">${esc(e)}</p>`).join('')}
+      <div class="section-head"><h2>Prévia</h2></div>
+      <p class="hint">${readSummary(parsed.found, kinds)}</p>
+      ${!hasPos ? `<p class="imp-warn">Não encontramos a planilha de <b>Posição</b> entre os arquivos. Ela é necessária para saber as quantidades.</p>` : `
+      ${partial.length ? `<p class="imp-warn">O extrato não explica toda a quantidade de ${partial.join(', ')} (provavelmente cobre só parte do período). Mantivemos o preço médio que já estava no app. Para calcular, baixe a Negociação desde a primeira compra.</p>` : ''}
+      ${!parsed.hasTrades ? `<p class="hint">Sem extrato de negociação: quantidades atualizadas e preços médios mantidos. Ações novas ficam sem preço médio — dá para digitar abaixo ou depois.</p>` : ''}
+      <div class="entries">${items.map((i) => `
+        <div class="entry imp-row">
+          <div class="e-l"><div class="e-t">${esc(i.ticker)}<span class="badge ${i.action === 'novo' ? 'solid' : ''}">${ACTION_LABEL[i.action]}</span></div>
+            <div class="e-s">${i.oldQty == null ? '' : fmtNum(i.oldQty, i.oldQty % 1 ? 2 : 0) + ' → '}${fmtNum(i.qty, i.qty % 1 ? 2 : 0)} ações${i.avgSrc === 'extrato' ? ' · PM do extrato' : ''}</div></div>
+          <div class="e-r">${i.action === 'remover' ? '' : i.avg != null
+            ? `<div class="e-p">${fmtMoney(i.avg)}</div><div class="x">${i.oldAvg != null && Math.abs(i.oldAvg - i.avg) > 0.005 ? 'antes ' + fmtMoney(i.oldAvg) : 'preço médio'}</div>`
+            : `<input class="imp-avg" data-t="${esc(i.ticker)}" inputmode="decimal" placeholder="PM" value="${typed[i.ticker] != null ? String(typed[i.ticker]).replace('.', ',') : ''}">`}</div>
+        </div>`).join('')}</div>
+      <div class="ac-row imp-toggle"><div><div class="ac-label">Remover ações que não estão no arquivo</div><div class="ac-hint">Só ações da B3; ativos de fora (como AAPL) nunca são tocados.</div></div>
+        <button class="switch" id="imp-remove" role="switch" aria-checked="${removeMissing}"><i></i></button></div>
+      <button class="btn" id="imp-apply" ${changes.length ? '' : 'disabled'}>${changes.length ? `Aplicar ${changes.length} alteraç${changes.length > 1 ? 'ões' : 'ão'}` : 'Carteira já está igual'}</button>`}`;
+    const rm = $('#imp-remove', box);
+    if (rm) rm.onclick = () => { removeMissing = !removeMissing; draw(); };
+    box.querySelectorAll('.imp-avg').forEach((inp) => inp.onchange = () => {
+      const v = numLoose(inp.value); if (inp.value.trim() && v >= 0) typed[inp.dataset.t] = v; else delete typed[inp.dataset.t]; draw();
+    });
+    const apply = $('#imp-apply', box);
+    if (apply) apply.onclick = () => applyImport(items, typed);
+    $('#sheet-body').scrollTo({ top: box.offsetTop - 8, behavior: 'smooth' });
+  };
+  draw();
+}
+
+// "posicao.xlsx — Posição, 5 ativos; negociacao.xlsx — Negociação, 6 operações"
+function readSummary(found, kinds) {
+  if (!found.length) return '';
+  const byFile = {};
+  for (const f of found) {
+    const k = byFile[f.file] || (byFile[f.file] = { kind: f.kind, rows: 0 });
+    k.rows += f.rows;
+  }
+  const unit = (kind, n) => (kind === 'posicao' ? `${n} linha${n > 1 ? 's' : ''} de ativos` : `${n} operaç${n > 1 ? 'ões' : 'ão'}`);
+  return 'Lido: ' + Object.entries(byFile).map(([file, k]) => `${esc(file)} — ${kinds[k.kind]}, ${unit(k.kind, k.rows)}`).join('; ') + '.';
+}
+
+function applyImport(items, typed) {
+  let added = 0, updated = 0, removed = 0;
+  for (const i of items) {
+    const avg = typed[i.ticker] ?? i.avg ?? null;
+    const cur = state.holdings.find((h) => h.symbol === i.symbol);
+    if (i.action === 'novo') { state.holdings.push({ id: uid(), symbol: i.symbol, qty: i.qty, avg, currency: 'BRL', name: '' }); added++; }
+    else if (i.action === 'remover' && cur) { state.holdings = state.holdings.filter((h) => h !== cur); delete state.quotes[i.symbol]; removed++; }
+    else if (cur && (i.action === 'atualizar' || typed[i.ticker] != null)) { cur.qty = i.qty || cur.qty; cur.avg = avg; updated++; }
+  }
+  provData = [];
+  save.holdings(); closeSheet(); renderStocks(); refreshQuotes();
+  toast(['Carteira importada', added && `${added} nova${added > 1 ? 's' : ''}`, updated && `${updated} atualizada${updated > 1 ? 's' : ''}`, removed && `${removed} removida${removed > 1 ? 's' : ''}`].filter(Boolean).join(' · '));
+}
+
 /* ---------- Detalhe da ação ---------- */
 function stockDetail(h) {
   let rangeKey = state.settings.range;
   const q = state.quotes[h.symbol];
   const cur = q ? q.currency : (h.currency || 'BRL');
-  const price = q ? q.price : h.avg;
-  const pos = h.qty * price, inv = h.qty * h.avg, res = pos - inv, resPct = inv ? (res / inv) * 100 : 0;
+  const price = q ? q.price : h.avg ?? 0;
+  const pos = h.qty * price, inv = hasAvg(h) ? h.qty * h.avg : null, res = inv == null ? null : pos - inv, resPct = inv ? (res / inv) * 100 : 0;
   openSheet(`
     <div class="eyebrow">${esc(h.name || q?.name || '')}</div>
     <h3>${esc(display(h.symbol))}</h3>
@@ -659,9 +765,9 @@ function stockDetail(h) {
     <div class="ranges" id="d-ranges"></div>
     <div class="stats">
       <div class="stat"><div class="k">Quantidade</div><div class="v">${fmtNum(h.qty, h.qty % 1 ? 2 : 0)}</div></div>
-      <div class="stat"><div class="k">Preço médio</div><div class="v">${fmtMoney(h.avg, cur)}</div></div>
+      <div class="stat"><div class="k">Preço médio</div><div class="v">${hasAvg(h) ? fmtMoney(h.avg, cur) : '—'}</div></div>
       <div class="stat"><div class="k">Posição</div><div class="v">${fmtMoney(pos, cur)}</div></div>
-      <div class="stat"><div class="k">Resultado</div><div class="v ${tone(res)}">${arrow(res)} ${fmtMoney(Math.abs(res), cur)} · ${fmtPct(resPct)}</div></div>
+      <div class="stat"><div class="k">Resultado</div><div class="v ${res == null ? '' : tone(res)}">${res == null ? 'Informe o PM' : `${arrow(res)} ${fmtMoney(Math.abs(res), cur)} · ${fmtPct(resPct)}`}</div></div>
     </div>
     <div class="section-head"><h2>Proventos</h2></div>
     <div class="entries" id="d-prov">${skeleton(3)}</div>
@@ -1425,6 +1531,7 @@ $('#tab-ibov').addEventListener('click', (e) => {
 
 document.querySelectorAll('.tab-btn').forEach((b) => b.onclick = () => switchTab(b.dataset.tab));
 $('#btn-add-stock').onclick = () => stockForm();
+$('#btn-import-b3').onclick = importSheet;
 $('#btn-add-card').onclick = () => cardForm();
 $('#btn-settings').onclick = settingsSheet;
 $('#stock-list').onclick = (e) => {

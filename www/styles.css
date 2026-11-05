@@ -467,3 +467,15 @@ main { padding: 0 var(--g) calc(var(--nav-h) + 56px + env(safe-area-inset-bottom
 .th-profile { margin-top: var(--s5); padding: var(--s4); border: 1px solid var(--line); border-radius: var(--r-lg); }
 .th-profile b { display: block; font-family: var(--serif); font-weight: 400; font-size: 20px; margin-top: var(--s2); }
 .th-profile p { font-size: var(--fs-small); color: var(--muted); line-height: 1.5; margin: var(--s2) 0 0; }
+
+/* ---------- Importação da B3 ---------- */
+.head-actions { display: flex; gap: var(--s2); }
+.opt { color: var(--muted); font-weight: 400; text-transform: none; letter-spacing: 0; }
+.steps { margin: 0 0 var(--s4); padding-left: 20px; font-size: var(--fs-small); color: var(--muted); line-height: 1.55; }
+.steps li { margin-bottom: var(--s2); }
+.steps b { color: var(--text); font-weight: 500; }
+.imp-warn { font-size: var(--fs-small); line-height: 1.5; color: #f2c94c; border-left: 2px solid #f2c94c; padding-left: var(--s3); margin: var(--s3) 0; }
+.imp-row .e-r { min-width: 96px; }
+.imp-avg { width: 96px; height: var(--control-h); background: var(--bg); border: 1px solid var(--line-2); border-radius: var(--r-sm); padding: 0 var(--s2); text-align: right; font-size: var(--fs-small); color: var(--text); outline: none; }
+.imp-avg:focus { border-color: var(--text); }
+.imp-toggle { margin-top: var(--s3); }

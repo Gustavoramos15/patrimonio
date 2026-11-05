@@ -4,7 +4,7 @@ App de finanças pessoais para Android, em preto e branco.
 
 ## Baixar
 
-**[Patrimonio-v1.4.0.apk](Patrimonio-v1.4.0.apk)** — baixe no celular e abra para instalar (permita instalar de fontes desconhecidas).
+**[Patrimonio-v1.5.0.apk](Patrimonio-v1.5.0.apk)** — baixe no celular e abra para instalar (permita instalar de fontes desconhecidas).
 
 ## Funcionalidades
 
@@ -13,6 +13,7 @@ App de finanças pessoais para Android, em preto e branco.
 - Gráfico da carteira e de cada ativo (1M, 3M, 6M, 1A, 5A), com valor ao arrastar o dedo; verde na alta e vermelho na queda
 - Gráfico de pizza da distribuição da carteira
 - Remover ação direto na tela do ativo
+- Importar a carteira pelos relatórios da Área do Investidor da B3 (Posição e, para o preço médio, Negociação ou Movimentação), com prévia antes de aplicar; os arquivos são lidos só no celular
 - Proventos: próximos dividendos e JCP (data com, pagamento, valor por ação e total), recebido em 12 meses e yield
 
 **Ibovespa**

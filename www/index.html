@@ -35,7 +35,7 @@
 
       <div class="section-head">
         <h2>Posições</h2>
-        <button class="pill" id="btn-add-stock">+ Adicionar</button>
+        <div class="head-actions"><button class="pill" id="btn-import-b3">Importar da B3</button><button class="pill" id="btn-add-stock">+ Adicionar</button></div>
       </div>
       <div class="list" id="stock-list"></div>
       <div class="foot-note" id="stock-updated"></div>
@@ -169,6 +169,8 @@
 
   <div class="toast" id="toast"></div>
 
+  <script src="xlsx-lite.js"></script>
+  <script src="b3import.js"></script>
   <script src="thermo.js"></script>
   <script src="app.js"></script>
 </body>
