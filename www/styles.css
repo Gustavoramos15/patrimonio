@@ -7,6 +7,10 @@
   src: url(fonts/inter.woff2) format("woff2");
 }
 @font-face {
+  font-family: "Playfair Display"; font-style: normal; font-weight: 600 800; font-display: swap;
+  src: url(fonts/playfair-display.woff2) format("woff2");
+}
+@font-face {
   font-family: "Instrument Serif"; font-style: normal; font-weight: 400; font-display: swap;
   src: url(fonts/instrument-serif.woff2) format("woff2");
 }
@@ -26,6 +30,7 @@
 
   /* tipo */
   --serif: "Instrument Serif", "Noto Serif", Georgia, serif;
+  --title: "Playfair Display", "Noto Serif", Georgia, serif; /* títulos das páginas */
   --sans: "Inter", "Roboto", system-ui, sans-serif;
   --fs-display: 42px;
   --fs-title: 34px;
@@ -89,8 +94,8 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
   transition: padding .3s var(--ease), border-color .3s, background .3s;
 }
 .brand {
-  font-family: var(--serif); font-weight: 400; font-size: var(--fs-title); line-height: 1;
-  margin: var(--s2) 0 0; letter-spacing: -.005em;
+  font-family: var(--title); font-weight: 650; font-size: 32px; line-height: 1.05;
+  margin: var(--s2) 0 0; letter-spacing: -.01em;
   transform-origin: left bottom; transition: transform .3s var(--ease), margin .3s var(--ease);
 }
 .top .eyebrow { transition: opacity .2s, height .3s var(--ease); height: 14px; overflow: hidden; }
