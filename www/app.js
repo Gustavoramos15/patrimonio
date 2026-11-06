@@ -217,11 +217,38 @@ const shortType = (t) => (/juros|jcp/i.test(t) ? 'JCP' : /rend/i.test(t) ? 'Rend
 const fmtShort = (t) => (t ? new Date(t).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' }) : 'a definir');
 const fmtUnit = (v, cur) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: cur, minimumFractionDigits: 2, maximumFractionDigits: 4 }).format(v);
 
+// dias de calendário entre hoje e a data (negativo = já passou)
+const daysUntil = (t) => {
+  if (!t) return null;
+  const a = new Date(); a.setHours(0, 0, 0, 0);
+  const b = new Date(t); b.setHours(0, 0, 0, 0);
+  return Math.round((b - a) / 864e5);
+};
+const fmtDay = (t) => new Date(t).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' }).replace('.', '');
+const daysLabel = (n) => (n === 0 ? 'hoje' : n === 1 ? 'amanhã' : n > 0 ? `em ${n} dias` : n === -1 ? 'ontem' : `há ${-n} dias`);
+
+// bloco à esquerda: quantos dias faltam para o pagamento
+function provWhen(p) {
+  const n = daysUntil(p.pay);
+  if (n == null) return '<div class="when tbd"><b>?</b><span>sem data</span></div>';
+  if (n === 0) return '<div class="when now"><b>Hoje</b><span>paga</span></div>';
+  if (n > 0) return `<div class="when${n <= 7 ? ' soon' : ''}"><b>${n}</b><span>${n === 1 ? 'dia' : 'dias'}</span></div>`;
+  const d = new Date(p.pay);
+  return `<div class="when done"><b>${String(d.getDate()).padStart(2, '0')}</b><span>${d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')}</span></div>`;
+}
+
 function provRow(h, p, showTicker = true) {
   const type = shortType(p.type);
-  return `<div class="entry">
+  const n = daysUntil(p.pay), nEx = daysUntil(p.ex);
+  const exTxt = nEx != null && nEx >= 0 ? `Data com ${daysLabel(nEx)} (${fmtShort(p.ex).slice(0, 5)})` : `Data com ${fmtShort(p.ex)}`;
+  let sub;
+  if (n == null) sub = `Pagamento a definir<br>${exTxt}`;
+  else if (n >= 0) sub = `Paga ${n === 0 ? 'hoje' : n === 1 ? 'amanhã' : fmtDay(p.pay)}<br>${exTxt}`;
+  else sub = `Pago ${daysLabel(n)} · ${fmtShort(p.pay)}`;
+  return `<div class="entry prov">
+    ${provWhen(p)}
     <div class="e-l"><div class="e-t">${showTicker ? esc(display(h.symbol)) : ''}<span class="badge ${type === 'JCP' ? 'solid' : ''} ${showTicker ? '' : 'flush'}">${esc(type)}</span></div>
-      <div class="e-s">Data com ${fmtShort(p.ex)} · Pgto ${fmtShort(p.pay)}</div></div>
+      <div class="e-s">${sub}</div></div>
     <div class="e-r"><div class="e-p">${fmtMoney(h.qty * p.value, p.currency)}</div><div class="x">${fmtUnit(p.value, p.currency)}/ação</div></div>
   </div>`;
 }
@@ -262,7 +289,7 @@ function renderProvents() {
   $('#prov-stats').innerHTML = `
     <div class="stat"><div class="k">A receber</div><div class="v">${fmtMoney(toReceive)}</div></div>
     <div class="stat"><div class="k">Recebido 12m</div><div class="v">${fmtMoney(received)}</div></div>
-    <div class="stat"><div class="k">Próximo pgto</div><div class="v">${first ? esc(display(first.h.symbol)) + ' · ' + fmtShort(first.p.pay).slice(0, 5) : '—'}</div></div>
+    <div class="stat"><div class="k">Próximo pgto</div><div class="v">${first ? esc(display(first.h.symbol)) + ' · ' + daysLabel(daysUntil(first.p.pay)) : '—'}</div></div>
     <div class="stat"><div class="k">Yield 12m</div><div class="v">${value ? fmtNum((received / value) * 100, 2) + '%' : '—'}</div></div>`;
   $('#prov-next').innerHTML = next.length ? next.map(({ h, p }) => provRow(h, p)).join('') : '<div class="empty">Nenhum provento anunciado para suas ações.</div>';
   $('#prov-past').innerHTML = past.length ? past.slice(0, 8).map(({ h, p }) => provRow(h, p)).join('') : '<div class="empty">Nenhum pagamento nos últimos 12 meses.</div>';
@@ -405,8 +432,8 @@ const SHADES = ['#f4f4f2', '#b8b8b4', '#86868a', '#5c5c5a', '#3e3e3c', '#2c2c2a'
 function drawDonut(canvas, items, active) {
   const { ctx, w, h } = setupCanvas(canvas);
   const total = items.reduce((s, i) => s + i.v, 0);
-  if (!total) return;
   const cx = w / 2, cy = h / 2, r = Math.min(w, h) / 2 - 12, thick = 18;
+  if (!total || r <= 0) return; // canvas ainda sem tamanho (seção escondida)
   let a = -Math.PI / 2;
   items.forEach((it, i) => {
     const sweep = (it.v / total) * Math.PI * 2;

@@ -4,7 +4,7 @@ App de finanças pessoais para Android, em preto e branco.
 
 ## Baixar
 
-**[Patrimonio-v1.5.0.apk](Patrimonio-v1.5.0.apk)** — baixe no celular e abra para instalar (permita instalar de fontes desconhecidas).
+**[Patrimonio-v1.5.1.apk](Patrimonio-v1.5.1.apk)** — baixe no celular e abra para instalar (permita instalar de fontes desconhecidas).
 
 ## Funcionalidades
 

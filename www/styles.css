@@ -210,6 +210,23 @@ main { padding: 0 var(--g) calc(var(--nav-h) + 56px + env(safe-area-inset-bottom
 
 .entry { display: flex; justify-content: space-between; align-items: center; gap: var(--s3); min-height: 64px; padding: var(--s3) 0; }
 .entry .e-l { min-width: 0; }
+.entry.prov { justify-content: flex-start; }
+.entry.prov .e-l { flex: 1; }
+/* contador de dias do provento */
+.when {
+  flex: none; width: 56px; height: 56px; border-radius: var(--r-md);
+  border: 1px solid var(--line-2); background: var(--surface);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1;
+}
+.when b { font: 400 26px/1 var(--serif); letter-spacing: -.01em; }
+.when span { font-size: 10px; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; margin-top: 3px; }
+.entry.prov .e-s { white-space: normal; line-height: 1.45; }
+.when.soon { border-color: var(--text); }
+.when.now { background: var(--text); border-color: var(--text); }
+.when.now b { font-size: 21px; color: var(--bg); }
+.when.now span { color: var(--bg); opacity: .7; }
+.when.done, .when.tbd { background: transparent; border-color: var(--line); }
+.when.done b, .when.tbd b { color: var(--muted); }
 .entry .e-t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .entry .e-r { flex: none; }
 .entry button.x { padding: 6px 0 2px 12px; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--line-2); }
