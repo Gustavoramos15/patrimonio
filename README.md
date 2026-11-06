@@ -4,7 +4,7 @@ App de finanças pessoais para Android, em preto e branco.
 
 ## Baixar
 
-**[Patrimonio-v1.5.2.apk](Patrimonio-v1.5.2.apk)** — baixe no celular e abra para instalar (permita instalar de fontes desconhecidas).
+**[Patrimonio-v1.6.0.apk](Patrimonio-v1.6.0.apk)** — baixe no celular e abra para instalar (permita instalar de fontes desconhecidas).
 
 ## Funcionalidades
 
@@ -14,7 +14,12 @@ App de finanças pessoais para Android, em preto e branco.
 - Gráfico de pizza da distribuição da carteira
 - Remover ação direto na tela do ativo
 - Importar a carteira pelos relatórios da Área do Investidor da B3 (Posição e, para o preço médio, Negociação ou Movimentação), com prévia antes de aplicar; os arquivos são lidos só no celular
-- Proventos: próximos dividendos e JCP (data com, pagamento, valor por ação e total), recebido em 12 meses e yield
+- Proventos: a receber, recebido em 12 meses, yield e pagos recentemente
+
+**Calendário**
+- Próximos dividendos e JCP com quantos dias faltam para cada pagamento
+- Os 12 meses do ano com o total de proventos em cada um
+- Calendário do mês com os dias de pagamento e de data com; toque num dia para ver o que paga
 
 **Ibovespa**
 - Gráfico do índice (1D a 5A), máxima/mínima do dia e de 52 semanas

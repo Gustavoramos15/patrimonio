@@ -258,12 +258,12 @@ async function refreshProvents() {
   const sec = $('#prov-section');
   if (!state.holdings.length) { sec.hidden = true; return; }
   sec.hidden = false;
-  $('#prov-status').innerHTML = '<span class="spin"></span>';
+  $('#prov-status').innerHTML = $('#cal-status').innerHTML = '<span class="spin"></span>';
   const res = await Promise.all(state.holdings.map((h) =>
     fetchProvents(h.symbol).then((list) => ({ h, list })).catch(() => ({ h, list: null }))));
   provData = res;
   const failed = res.filter((r) => !r.list).length;
-  $('#prov-status').textContent = failed ? `${failed} sem dados` : '';
+  $('#prov-status').textContent = $('#cal-status').textContent = failed ? `${failed} sem dados` : '';
   renderProvents();
 }
 
@@ -292,8 +292,132 @@ function renderProvents() {
     <div class="stat"><div class="k">Próximo pgto</div><div class="v">${first ? esc(display(first.h.symbol)) + ' · ' + daysLabel(daysUntil(first.p.pay)) : '—'}</div></div>
     <div class="stat"><div class="k">Yield 12m</div><div class="v">${value ? fmtNum((received / value) * 100, 2) + '%' : '—'}</div></div>`;
   $('#prov-next').innerHTML = next.length ? next.map(({ h, p }) => provRow(h, p)).join('') : '<div class="empty">Nenhum provento anunciado para suas ações.</div>';
+  $('#prov-next-sum').innerHTML = next.length
+    ? `<b>${next.length} ${next.length === 1 ? 'próximo pagamento' : 'próximos pagamentos'}</b>${first ? ` · o primeiro ${daysLabel(daysUntil(first.p.pay))}` : ''}`
+    : 'Nenhum provento anunciado';
   $('#prov-past').innerHTML = past.length ? past.slice(0, 8).map(({ h, p }) => provRow(h, p)).join('') : '<div class="empty">Nenhum pagamento nos últimos 12 meses.</div>';
+  renderCalendar();
 }
+
+/* =========================================================
+   Calendário de proventos
+   ========================================================= */
+const MONTHS = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+const cal = { y: new Date().getFullYear(), m: new Date().getMonth(), day: null };
+const ymd = (t) => { const d = new Date(t); return [d.getFullYear(), d.getMonth(), d.getDate()]; };
+
+// todos os eventos (pagamento e data com) das ações da carteira
+function calEvents() {
+  const out = [];
+  for (const { h, list } of provData) {
+    if (!list || !state.holdings.includes(h)) continue;
+    for (const p of list) {
+      const brl = toBRL(h.qty * p.value, p.currency);
+      if (p.pay) out.push({ kind: 'pay', t: p.pay, h, p, brl });
+      if (p.ex) out.push({ kind: 'ex', t: p.ex, h, p, brl });
+    }
+  }
+  return out;
+}
+
+function renderCalendar() {
+  const tab = $('#tab-cal');
+  if (!tab) return;
+  if (!state.holdings.length) {
+    $('#cal-total').textContent = '—';
+    $('#cal-sub').textContent = 'Adicione ações para ver o calendário';
+    $('#prov-next').innerHTML = '<div class="empty">Adicione ações na aba Ações para ver quando cada uma paga dividendos e JCP.</div>';
+    $('#cal-months').innerHTML = ''; $('#cal-grid').innerHTML = ''; $('#cal-list').innerHTML = '';
+    $('#cal-year').textContent = cal.y; $('#cal-month-title').textContent = MONTHS[cal.m];
+    return;
+  }
+  const evs = calEvents();
+  const pays = evs.filter((e) => e.kind === 'pay');
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const [ty, tm, td] = ymd(today);
+
+  // topo: total do ano escolhido
+  const inYear = pays.filter((e) => ymd(e.t)[0] === cal.y);
+  const total = inYear.reduce((s, e) => s + e.brl, 0);
+  const ahead = inYear.filter((e) => e.t >= today.getTime()).reduce((s, e) => s + e.brl, 0);
+  $('#cal-label').textContent = `Proventos em ${cal.y}`;
+  $('#cal-total').textContent = fmtMoney(total);
+  $('#cal-sub').innerHTML = ahead > 0 ? `<span class="up">${fmtMoney(ahead)}</span> ainda a receber` : cal.y < ty ? 'Pagos no ano' : inYear.length ? 'Tudo já foi pago' : 'Nenhum pagamento anunciado';
+
+  // 12 meses do ano
+  $('#cal-year').textContent = cal.y;
+  const byMonth = Array.from({ length: 12 }, () => ({ v: 0, n: 0 }));
+  for (const e of inYear) { const m = ymd(e.t)[1]; byMonth[m].v += e.brl; byMonth[m].n++; }
+  const max = Math.max(...byMonth.map((x) => x.v), 1);
+  $('#cal-months').innerHTML = byMonth.map((x, i) => {
+    const past = cal.y < ty || (cal.y === ty && i < tm);
+    const cls = [i === cal.m ? 'on' : '', cal.y === ty && i === tm ? 'now' : '', past ? 'past' : '', x.n ? '' : 'none'].join(' ');
+    return `<button class="mo ${cls}" data-m="${i}">
+      <span class="mo-n">${MONTHS[i].slice(0, 3)}</span>
+      <span class="mo-v">${x.n ? fmtMoney(x.v).replace(/,\d\d$/, '') : '—'}</span>
+      <span class="mo-bar"><i style="width:${(x.v / max) * 100}%"></i></span>
+    </button>`;
+  }).join('');
+
+  // grade do mês
+  $('#cal-month-title').textContent = `${MONTHS[cal.m]}${cal.y !== ty ? ' ' + cal.y : ''}`;
+  const inMonth = evs.filter((e) => { const [y, m] = ymd(e.t); return y === cal.y && m === cal.m; });
+  const byDay = {};
+  for (const e of inMonth) { const d = ymd(e.t)[2]; (byDay[d] || (byDay[d] = { pay: 0, ex: 0 }))[e.kind]++; }
+  const first = new Date(cal.y, cal.m, 1).getDay();
+  const days = new Date(cal.y, cal.m + 1, 0).getDate();
+  let g = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((d) => `<span class="wd">${d}</span>`).join('');
+  for (let i = 0; i < first; i++) g += '<span></span>';
+  for (let d = 1; d <= days; d++) {
+    const b = byDay[d];
+    const cls = [b && b.pay ? 'pay' : '', b && b.ex ? 'ex' : '', cal.y === ty && cal.m === tm && d === td ? 'today' : '', cal.day === d ? 'sel' : ''].join(' ');
+    g += b ? `<button class="d ${cls}" data-d="${d}">${d}${b.pay > 1 ? `<sup>${b.pay}</sup>` : ''}</button>` : `<span class="d ${cls}">${d}</span>`;
+  }
+  $('#cal-grid').innerHTML = g;
+
+  // lista do mês (ou do dia tocado)
+  const shown = inMonth.filter((e) => cal.day == null || ymd(e.t)[2] === cal.day).sort((a, b) => a.t - b.t || (a.kind === 'pay' ? -1 : 1));
+  const monthPay = inMonth.filter((e) => e.kind === 'pay').reduce((s, e) => s + e.brl, 0);
+  let html = `<div class="sub-head cal-sub-head"><span>${cal.day ? `Dia ${cal.day}` : 'No mês'}</span><span>${cal.day ? '<button class="link" data-cal="all">ver mês inteiro</button>' : monthPay ? fmtMoney(monthPay) : ''}</span></div>`;
+  if (!shown.length) {
+    // mesmo mês do ano anterior, como referência (dados reais já pagos)
+    const prev = pays.filter((e) => { const [y, m] = ymd(e.t); return y === cal.y - 1 && m === cal.m; });
+    const names = [...new Set(prev.map((e) => display(e.h.symbol)))];
+    html += `<div class="empty">Nenhum provento anunciado para ${MONTHS[cal.m].toLowerCase()}.${names.length ? `<br><span class="muted">Em ${MONTHS[cal.m].toLowerCase()} de ${cal.y - 1} pagaram: ${esc(names.join(', '))}.</span>` : ''}</div>`;
+  } else {
+    html += shown.map((e) => e.kind === 'pay' ? provRow(e.h, e.p) : exRow(e)).join('');
+  }
+  $('#cal-list').innerHTML = html;
+}
+
+// linha de "data com": último dia para ter a ação e receber
+function exRow(e) {
+  const n = daysUntil(e.t), d = new Date(e.t), type = shortType(e.p.type);
+  const when = n >= 0 ? (n === 0 ? 'hoje' : daysLabel(n)) : daysLabel(n);
+  return `<div class="entry prov">
+    <div class="when ex"><b>${String(d.getDate()).padStart(2, '0')}</b><span>data com</span></div>
+    <div class="e-l"><div class="e-t">${esc(display(e.h.symbol))}<span class="badge ${type === 'JCP' ? 'solid' : ''}">${esc(type)}</span></div>
+      <div class="e-s">Data com ${when}<br>${n >= 0 ? 'Tenha a ação até esse dia para receber' : 'Paga ' + (e.p.pay ? fmtShort(e.p.pay) : 'em data a definir')}</div></div>
+    <div class="e-r"><div class="e-p">${fmtMoney(e.h.qty * e.p.value, e.p.currency)}</div><div class="x">${fmtUnit(e.p.value, e.p.currency)}/ação</div></div>
+  </div>`;
+}
+
+$('#tab-cal').addEventListener('click', (e) => {
+  const mo = e.target.closest('.mo');
+  if (mo) { cal.m = +mo.dataset.m; cal.day = null; renderCalendar(); return; }
+  const d = e.target.closest('button.d');
+  if (d) { cal.day = cal.day === +d.dataset.d ? null : +d.dataset.d; renderCalendar(); return; }
+  const a = e.target.closest('[data-cal]'); if (!a) return;
+  const k = a.dataset.cal;
+  if (k === 'prev' || k === 'next') {
+    cal.m += k === 'prev' ? -1 : 1;
+    if (cal.m < 0) { cal.m = 11; cal.y--; } else if (cal.m > 11) { cal.m = 0; cal.y++; }
+  } else if (k === 'year-prev') cal.y--;
+  else if (k === 'year-next') cal.y++;
+  cal.day = null;
+  renderCalendar();
+});
+$('#prov-to-cal').onclick = () => switchTab('cal');
 
 function renderAlloc() {
   const sec = $('#alloc-section');
@@ -1537,7 +1661,7 @@ $('#tab-thermo').addEventListener('click', (e) => {
   if (b) analyzeThermo(b.dataset.t);
 });
 
-const TITLES = { stocks: 'Carteira', ibov: 'Ibovespa', thermo: 'Termômetro', news: 'Notícias', cards: 'Cartões' };
+const TITLES = { stocks: 'Carteira', ibov: 'Ibovespa', thermo: 'Termômetro', cal: 'Calendário', news: 'Notícias', cards: 'Cartões' };
 function switchTab(name) {
   document.querySelectorAll('.tab-btn').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
   document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.id === 'tab-' + name));
@@ -1547,6 +1671,11 @@ function switchTab(name) {
   if (name === 'ibov') requestAnimationFrame(renderIbov);
   if (name === 'news') renderNews();
   if (name === 'thermo') renderThermoHome();
+  if (name === 'cal') {
+    const now = new Date(); cal.y = now.getFullYear(); cal.m = now.getMonth(); cal.day = null;
+    renderCalendar();
+    if (!provData.length && state.holdings.length) refreshProvents();
+  }
 }
 $('#ibov-ranges').onclick = (e) => {
   const b = e.target.closest('button'); if (!b) return;

@@ -49,8 +49,7 @@
         <div class="section-head"><h2>Proventos <span class="tag-muted" id="prov-status"></span></h2>
           <button class="pill pill-switch" data-alert="provAlerts" role="switch" aria-checked="false"><span class="dot"></span>Avisar no celular</button></div>
         <div class="stats" id="prov-stats"></div>
-        <div class="sub-head">Próximos</div>
-        <div class="entries" id="prov-next"></div>
+        <button class="cal-link" id="prov-to-cal"><span id="prov-next-sum">Próximos pagamentos</span><span class="go">Calendário <svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></button>
         <div class="sub-head">Pagos recentemente</div>
         <div class="entries" id="prov-past"></div>
         <div class="foot-note">Valores estimados com a quantidade atual. JCP é bruto (15% de IR retido na fonte). Para ter direito, é preciso ter a ação na data com. Fonte: Status Invest / Yahoo Finance.</div>
@@ -88,6 +87,37 @@
       <div class="suggest" id="th-suggest"></div>
       <div class="chips" id="th-chips"></div>
       <div id="th-result"></div>
+    </section>
+
+    <section class="tab" id="tab-cal">
+      <div class="hero">
+        <div class="label" id="cal-label">Proventos no ano</div>
+        <div class="big" id="cal-total">—</div>
+        <div class="delta" id="cal-sub">&nbsp;</div>
+      </div>
+      <div class="section-head"><h2>Próximos <span class="tag-muted" id="cal-status"></span></h2></div>
+      <div class="entries" id="prov-next"></div>
+
+      <div class="section-head">
+        <h2 id="cal-year">2026</h2>
+        <div class="head-actions">
+          <button class="icon-btn sm" data-cal="year-prev" aria-label="Ano anterior"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+          <button class="icon-btn sm" data-cal="year-next" aria-label="Próximo ano"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
+        </div>
+      </div>
+      <div class="months" id="cal-months"></div>
+
+      <div class="section-head">
+        <h2 id="cal-month-title">Mês</h2>
+        <div class="head-actions">
+          <button class="icon-btn sm" data-cal="prev" aria-label="Mês anterior"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+          <button class="icon-btn sm" data-cal="next" aria-label="Próximo mês"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
+        </div>
+      </div>
+      <div class="cal-grid" id="cal-grid"></div>
+      <div class="cal-legend"><span><i class="lg-pay"></i>Pagamento</span><span><i class="lg-ex"></i>Data com</span><span><i class="lg-today"></i>Hoje</span></div>
+      <div id="cal-list"></div>
+      <div class="foot-note">Datas e valores anunciados pelas empresas. Valores estimados com a quantidade atual de cada ação; JCP bruto (15% de IR na fonte). Fonte: Status Invest / Yahoo Finance.</div>
     </section>
 
     <section class="tab" id="tab-news">
@@ -147,6 +177,10 @@
     <button class="tab-btn" data-tab="thermo">
       <svg viewBox="0 0 24 24"><path d="M14 14.8V5a2 2 0 1 0-4 0v9.8a4 4 0 1 0 4 0z"/><path d="M12 9v7"/></svg>
       <span>Termômetro</span>
+    </button>
+    <button class="tab-btn" data-tab="cal">
+      <svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><path d="M3 9.5h18"/><path d="M8 2.5v4M16 2.5v4"/><path d="M7.5 14h2M11 14h2M14.5 14h2M7.5 17h2"/></svg>
+      <span>Calendário</span>
     </button>
     <button class="tab-btn" data-tab="news">
       <svg viewBox="0 0 24 24"><path d="M4 5h13v14H6a2 2 0 0 1-2-2z"/><path d="M17 9h3v8a2 2 0 0 1-2 2"/><path d="M8 9h5M8 13h5"/></svg>

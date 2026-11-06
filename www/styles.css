@@ -501,3 +501,69 @@ main { padding: 0 var(--g) calc(var(--nav-h) + 56px + env(safe-area-inset-bottom
 .imp-avg { width: 96px; height: var(--control-h); background: var(--bg); border: 1px solid var(--line-2); border-radius: var(--r-sm); padding: 0 var(--s2); text-align: right; font-size: var(--fs-small); color: var(--text); outline: none; }
 .imp-avg:focus { border-color: var(--text); }
 .imp-toggle { margin-top: var(--s3); }
+
+/* ---------- Calendário de proventos ---------- */
+.icon-btn.sm { width: var(--control-h); height: var(--control-h); }
+.icon-btn.sm svg { width: 17px; height: 17px; }
+.cal-link {
+  width: 100%; display: flex; align-items: center; justify-content: space-between; gap: var(--s3);
+  margin-top: var(--s4); padding: var(--s4); border: 1px solid var(--line); border-radius: var(--r-md);
+  background: var(--surface); color: var(--muted); font-size: var(--fs-small); text-align: left;
+}
+.cal-link b { color: var(--text); font-weight: 500; }
+.cal-link .go { display: flex; align-items: center; gap: 2px; color: var(--text); flex: none; }
+.cal-link svg { width: 16px; height: 16px; }
+.cal-link:active { background: var(--surface-2); }
+
+.months { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s2); }
+.mo {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
+  padding: 10px 10px 9px; border: 1px solid var(--line); border-radius: var(--r-sm);
+  background: var(--surface); text-align: left; min-width: 0;
+}
+.mo-n { font-size: var(--fs-over); letter-spacing: var(--track-over); text-transform: uppercase; color: var(--muted); }
+.mo-v { font-size: var(--fs-caption); color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.mo-bar { width: 100%; height: 3px; border-radius: 2px; background: var(--line); overflow: hidden; }
+.mo-bar i { display: block; height: 100%; background: var(--text); border-radius: 2px; }
+.mo.none .mo-v { color: var(--faint); }
+.mo.past { opacity: .6; }
+.mo.now { border-color: var(--line-2); }
+.mo.now .mo-n { color: var(--text); }
+.mo.on { background: var(--text); border-color: var(--text); opacity: 1; }
+.mo.on .mo-n, .mo.on .mo-v { color: var(--bg); }
+.mo.on .mo-bar { background: rgba(0,0,0,.15); }
+.mo.on .mo-bar i { background: var(--bg); }
+
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; }
+.cal-grid .wd { font-size: var(--fs-over); color: var(--faint); padding: 2px 0 6px; letter-spacing: .08em; }
+.cal-grid .d {
+  position: relative; aspect-ratio: 1; display: grid; place-items: center;
+  font-size: var(--fs-small); color: var(--faint); border-radius: 50%; border: 1px solid transparent;
+}
+.cal-grid button.d { color: var(--text); }
+.cal-grid .d.ex { border-color: var(--line-2); border-style: dashed; }
+.cal-grid .d.pay { background: var(--text); color: var(--bg); font-weight: 600; border-color: var(--text); border-style: solid; }
+.cal-grid .d.today::after {
+  content: ""; position: absolute; bottom: 3px; left: 50%; width: 4px; height: 4px; margin-left: -2px;
+  border-radius: 50%; background: var(--up);
+}
+.cal-grid .d.sel { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--up); }
+.cal-grid .d sup { position: absolute; top: -3px; right: -1px; font-size: 9px; min-width: 14px; height: 14px; line-height: 14px; border-radius: 7px; background: var(--surface-2); color: var(--text); border: 1px solid var(--line-2); }
+.cal-legend { display: flex; gap: var(--s4); justify-content: center; margin: var(--s4) 0 0; font-size: var(--fs-caption); color: var(--muted); }
+.cal-legend span { display: flex; align-items: center; gap: 6px; }
+.cal-legend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.lg-pay { background: var(--text); }
+.lg-ex { border: 1px dashed var(--muted); }
+.lg-today { width: 5px !important; height: 5px !important; background: var(--up); }
+.cal-sub-head { display: flex; justify-content: space-between; align-items: center; }
+.cal-sub-head span:last-child { color: var(--text); letter-spacing: 0; text-transform: none; font-size: var(--fs-small); }
+.link { color: var(--muted); text-decoration: underline; text-underline-offset: 3px; font-size: var(--fs-caption); }
+#cal-list .empty { padding: var(--s4) 0; font-size: var(--fs-small); color: var(--faint); border-bottom: 1px solid var(--line); line-height: 1.5; }
+#cal-list .empty .muted { color: var(--muted); }
+.when.ex { border-style: dashed; background: transparent; }
+.when.ex span { font-size: 8.5px; }
+
+/* 6 abas: botões um pouco mais estreitos */
+.tab-btn { padding: 0 10px; font-size: 13px; }
+.tab-btn.active span { max-width: 104px; }
+.when.tbd span { font-size: 8.5px; white-space: nowrap; }
