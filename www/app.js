@@ -1605,7 +1605,7 @@ function renderThermoResult(a) {
   $('#th-result').innerHTML = `
     <div class="th-head">
       <div><div class="over">${esc(a.setor || '')}</div><h2 class="th-tk">${esc(a.ticker)}</h2><div class="th-name">${esc(a.nome || '')}</div></div>
-      <div class="th-price"><div class="over">Cotação</div><div>${fmtMoney(a.price)}</div></div>
+      <div class="th-price"><div class="over">${esc(a.priceLabel || 'Cotação')}</div><div>${fmtMoney(a.price)}</div></div>
     </div>
     <div class="verdict v-${a.verdict.key}"><span class="over">Sinal geral</span><b>${esc(a.verdict.label)}</b></div>
     <div class="gauges">${gaugeCard('g-buy', 'Termômetro de compra', a.buy)}${gaugeCard('g-sell', 'Termômetro de venda', a.sell)}</div>
@@ -1629,7 +1629,7 @@ function renderThermoResult(a) {
 
     <div class="th-profile"><div class="over">Critérios ajustados ao setor</div><b>${esc(a.profileLabel)}</b>${a.profileNote ? `<p>${esc(a.profileNote)}</p>` : ''}</div>
 
-    <p class="foot-note">Fonte: ${esc(a.fonte || 'CVM')}. Balanços até ${fmtRef(a.ref)}; cotação com atraso (Yahoo Finance). Indicadores calculados pelo app a partir das contas oficiais, então podem diferir um pouco de outros sites.<br><br>
+    <p class="foot-note">Fonte: ${esc(a.fonte || 'CVM')}. Balanços até ${fmtRef(a.ref)}; ${a.priceLabel ? 'preço de fechamento do pregão anterior, o mesmo usado no ranking' : 'cotação com atraso'} (Yahoo Finance). Indicadores calculados pelo app a partir das contas oficiais, então podem diferir um pouco de outros sites.<br><br>
     Análise automática para estudo, baseada só em números do passado. <b>Não é recomendação de investimento.</b></p>
     <button class="btn ghost" id="th-back">Voltar ao ranking</button>`;
   requestAnimationFrame(() => { drawGauge($('#g-buy'), a.buy.score); drawGauge($('#g-sell'), a.sell.score); });
@@ -1709,7 +1709,7 @@ function renderRanking() {
   $('#rk-list').innerHTML = html;
   const dt = d.precos ? new Date(d.precos + 'T12:00:00').toLocaleDateString('pt-BR') : '—';
   $('#rk-foot').innerHTML = `${list.length} empresas ${rank.liq ? 'com mais de R$ 1 milhão negociado por dia e ' : ''}com dados para pelo menos ${RK_MIN_COV}% dos critérios; uma ação por empresa (a mais negociada).
-    Notas recalculadas todo dia com o preço de fechamento de ${dt} e os balanços da CVM. Toque numa ação para ver a análise completa com a cotação de agora.<br><br>
+    Notas recalculadas todo dia com o preço de fechamento de ${dt} e os balanços da CVM. Toque numa ação para ver a análise completa, com as mesmas notas.<br><br>
     Análise automática baseada em números do passado. <b>Não é recomendação de investimento.</b>`;
 }
 
@@ -1736,7 +1736,18 @@ async function analyzeThermo(ticker) {
   if (hit && Date.now() - hit.at < 10 * 60 * 1000) return renderThermoResult(hit.a);
   $('#th-result').innerHTML = `<div class="th-loading"><span class="spin"></span>Analisando ${esc(ticker)} com os balanços da CVM…</div>${skeleton(4)}`;
   try {
-    const a = await Thermo.analyze(ticker, thermoIO);
+    if (!rank.data) await loadRanking();
+    const r = rank.data && rank.data.acoes.find((x) => x.t === ticker && x.ye);
+    let a;
+    if (r) {
+      // mesmos dados do ranking (fechamento do dia + fechamentos anuais) => mesma nota
+      const hist = Object.entries(r.ye).map(([yr, v]) => ({ t: Date.UTC(+yr, 11, 15), v }));
+      a = await Thermo.analyze(ticker, { ...thermoIO, price: async () => r.p, history: async () => hist });
+      const dt = rank.data.precos ? new Date(rank.data.precos + 'T12:00:00').toLocaleDateString('pt-BR').slice(0, 5) : '';
+      a.priceLabel = dt ? `Fechamento ${dt}` : 'Fechamento';
+    } else {
+      a = await Thermo.analyze(ticker, thermoIO);
+    }
     if (req !== thermoReq) return;
     thermoCache[ticker] = { at: Date.now(), a };
     renderThermoResult(a);

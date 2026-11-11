@@ -48,6 +48,18 @@ async function yahoo(ticker) {
   return null;
 }
 
+// último fechamento de cada ano (é só isso que o termômetro usa do histórico)
+function yearEnd(history) {
+  const last = {};
+  for (const pt of history) {
+    const yr = new Date(pt.t).getUTCFullYear();
+    if (!last[yr] || pt.t > last[yr].t) last[yr] = pt;
+  }
+  return Object.fromEntries(Object.entries(last).map(([yr, pt]) => [yr, +pt.v.toFixed(2)]));
+}
+// mesma função no app: reconstrói a "série" a partir dos fechamentos anuais
+const yeHistory = (ye) => Object.entries(ye || {}).map(([yr, v]) => ({ t: Date.UTC(+yr, 11, 15), v }));
+
 async function main() {
   let index = JSON.parse(fs.readFileSync(path.join(DATA, 'index.json'), 'utf8')).tickers || [];
   if (LIMIT) index = index.slice(0, LIMIT);
@@ -66,12 +78,16 @@ async function main() {
       await sleep(150);
       if (!y) { falhas++; continue; }
       try {
-        const a = Thermo.analyzeData(it.t, doc, y.price, y.history);
+        // o app refaz a análise com exatamente estes valores publicados (p e ye),
+        // então a nota calculada aqui é a mesma que aparece ao abrir a ação
+        const p = +y.price.toFixed(2);
+        const ye = yearEnd(y.history);
+        const a = Thermo.analyzeData(it.t, doc, p, yeHistory(ye));
         if (a.buy.score == null && a.sell.score == null) continue;
         lastTime = Math.max(lastTime, y.time || 0);
         rows.push({
           t: it.t, n: it.n, s: it.s, cnpj: doc.cnpj,
-          p: +y.price.toFixed(2), liq: Math.round(y.liq),
+          p, ye, liq: Math.round(y.liq),
           b: a.buy.score, bc: a.buy.coverage, v: a.sell.score, vc: a.sell.coverage,
           r: a.verdict.key, pf: a.profileLabel,
         });

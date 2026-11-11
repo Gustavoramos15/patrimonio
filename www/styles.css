@@ -596,3 +596,4 @@ main { padding: 0 var(--g) calc(var(--nav-h) + 56px + env(safe-area-inset-bottom
 .rk-s.wide span { text-transform: none; letter-spacing: 0; font-size: var(--fs-caption); }
 .rk-hint { font-size: var(--fs-caption); color: var(--faint); padding: var(--s3) 0; }
 #rk-seg button { font-size: 12.5px; }
+.th-price .over { white-space: nowrap; }
