@@ -1515,7 +1515,14 @@ $('#news-chips').onclick = (e) => {
    ========================================================= */
 const thermoIO = {
   getJSON: (url) => httpGetJSON(url),
-  price: async (t) => (await fetchSeries(t + '.SA', '1D')).price,
+  price: async (t) => {
+    try { return (await fetchSeries(t + '.SA', '1D')).price; } catch (e) {
+      // sem cotação ao vivo: usa o fechamento do ranking diário, se houver
+      const r = rank.data && rank.data.acoes.find((a) => a.t === t);
+      if (r && r.p) return r.p;
+      throw e;
+    }
+  },
   history: async (t) => (await fetchSeries(t + '.SA', '5A')).points,
 };
 const thermoCache = {};
@@ -1630,7 +1637,8 @@ function renderThermoResult(a) {
 
 /* ---------- Ranking (notas calculadas 1x por dia no GitHub, com o mesmo thermo.js) ---------- */
 const RANK_URL = Thermo.DATA_URL.replace(/fundamentos\/$/, 'ranking.json');
-const rank = { data: store.get('rank.data', null), at: 0, k: 'b', liq: true, all: false, loading: false };
+const rank = { data: store.get('rank.data', null), at: 0, k: 'b', liq: true, all: false, loading: false, q: '' };
+const normTxt = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 const RK_MIN_LIQ = 1e6;  // R$ 1 milhão negociado por dia
 const RK_MIN_COV = 60;   // nota precisa usar pelo menos 60% dos critérios
 
@@ -1655,7 +1663,8 @@ function renderRanking() {
   $('#rk-liq').setAttribute('aria-checked', String(rank.liq));
   document.querySelectorAll('#rk-seg button').forEach((b) => b.classList.toggle('on', b.dataset.k === rank.k));
   const isBuy = rank.k === 'b';
-  $('#rk-sub').textContent = isBuy ? 'Maiores notas de compra' : 'Mais sinais de venda';
+  const q = normTxt(rank.q);
+  $('#rk-sub').textContent = q ? 'Resultado da busca' : isBuy ? 'Ordenado pela nota de compra' : 'Ordenado pela nota de venda';
   if (!d) {
     if (!rank.loading) $('#rk-list').innerHTML = '<div class="empty-state"><strong>Ranking indisponível</strong>Não foi possível baixar as notas agora. Verifique a conexão.</div>';
     return;
@@ -1665,22 +1674,39 @@ function renderRanking() {
   const list = d.acoes
     .filter((a) => a[rank.k] != null && a[cov] >= RK_MIN_COV && (!rank.liq || a.liq >= RK_MIN_LIQ))
     .sort((a, b) => b[rank.k] - a[rank.k] || b.liq - a.liq);
-  const shown = list.slice(0, rank.all ? 100 : 20);
-  $('#rk-list').innerHTML = shown.map((a, i) => {
-    const s = a[rank.k], bd = Thermo.band(s);
-    const other = isBuy ? a.v : a.b;
-    return `<button class="row rk-row" data-t="${esc(a.t)}">
-      <span class="rk-pos">${i + 1}</span>
+  const pos = new Map(list.map((a, i) => [a.t, i + 1]));
+
+  // nota de compra e de venda, lado a lado; a que ordena o ranking fica em destaque
+  const score = (v, label, on) => {
+    const bd = Thermo.band(v);
+    return `<div class="rk-s ${on ? 'on' : ''}"><b style="color:${v == null ? 'var(--faint)' : bd.color}">${v ?? '—'}</b><span>${label}</span></div>`;
+  };
+  const row = (a, p) => `<button class="row rk-row" data-t="${esc(a.t)}">
+      <span class="rk-pos${p >= 100 ? ' long' : ''}">${p ?? '–'}</span>
       <div class="left"><div class="sym">${esc(a.t)}${mine.has(a.t) ? '<span class="badge flush-l">carteira</span>' : ''}</div>
-        <div class="sub">${esc(a.s || '')}</div></div>
-      <div class="right">
-        <div class="rk-score" style="color:${bd.color}">${s}</div>
-        <div class="rk-bar"><i style="width:${s}%;background:${bd.color}"></i></div>
-        <div class="rk-other">${isBuy ? 'venda' : 'compra'} ${other ?? '—'}</div>
-      </div>
+        <div class="sub">${esc(a.s || a.n || '')}</div></div>
+      ${score(a.b, 'compra', isBuy)}${score(a.v, 'venda', !isBuy)}
     </button>`;
-  }).join('') || '<div class="empty">Nenhuma ação com dados suficientes.</div>';
-  if (list.length > 20) $('#rk-list').insertAdjacentHTML('beforeend', `<button class="btn ghost rk-more">${rank.all ? 'Mostrar só o top 20' : `Ver top ${Math.min(100, list.length)}`}</button>`);
+
+  let html;
+  if (q) {
+    // busca: procura em todas as ações com nota (e nas que só têm balanço, para abrir a análise)
+    const match = (t, n) => t.toLowerCase().startsWith(q) || normTxt(n).includes(q);
+    const found = d.acoes.filter((a) => match(a.t, a.n))
+      .sort((a, b) => (pos.get(a.t) || 1e9) - (pos.get(b.t) || 1e9) || a.t.localeCompare(b.t)).slice(0, 15);
+    const have = new Set(found.map((a) => a.t));
+    const extra = (thermoIndex || []).filter((x) => !have.has(x.t) && match(x.t, x.n)).slice(0, Math.max(0, 8 - found.length));
+    html = found.map((a) => row(a, pos.get(a.t))).join('') +
+      extra.map((x) => `<button class="row rk-row" data-t="${esc(x.t)}"><span class="rk-pos">–</span>
+        <div class="left"><div class="sym">${esc(x.t)}</div><div class="sub">${esc(x.n)}</div></div>
+        <div class="rk-s wide"><span>sem nota · toque para analisar</span></div></button>`).join('');
+    if (found.some((a) => !pos.has(a.t))) html += `<div class="rk-hint">“–” = fora do ranking atual (pouca liquidez ou dados insuficientes). Toque para ver a análise.</div>`;
+    if (!html) html = `<div class="empty">Nenhuma empresa encontrada para “${esc(rank.q)}”.</div>`;
+  } else {
+    html = list.slice(0, rank.all ? 100 : 20).map((a, i) => row(a, i + 1)).join('') || '<div class="empty">Nenhuma ação com dados suficientes.</div>';
+    if (list.length > 20) html += `<button class="btn ghost rk-more">${rank.all ? 'Mostrar só o top 20' : `Ver top ${Math.min(100, list.length)}`}</button>`;
+  }
+  $('#rk-list').innerHTML = html;
   const dt = d.precos ? new Date(d.precos + 'T12:00:00').toLocaleDateString('pt-BR') : '—';
   $('#rk-foot').innerHTML = `${list.length} empresas ${rank.liq ? 'com mais de R$ 1 milhão negociado por dia e ' : ''}com dados para pelo menos ${RK_MIN_COV}% dos critérios; uma ação por empresa (a mais negociada).
     Notas recalculadas todo dia com o preço de fechamento de ${dt} e os balanços da CVM. Toque numa ação para ver a análise completa com a cotação de agora.<br><br>
@@ -1703,7 +1729,7 @@ $('#th-result').addEventListener('click', (e) => {
 let thermoReq = 0;
 async function analyzeThermo(ticker) {
   ticker = ticker.toUpperCase().replace(/\.SA$/, '');
-  thermoTicker = ticker; $('#th-suggest').innerHTML = ''; $('#th-input').value = ''; $('#th-input').blur();
+  thermoTicker = ticker; $('#th-suggest').innerHTML = ''; $('#th-input').blur();
   renderThermoHome();
   const req = ++thermoReq;
   const hit = thermoCache[ticker];
@@ -1720,17 +1746,17 @@ async function analyzeThermo(ticker) {
   }
 }
 
+// a busca filtra o próprio ranking (com as notas de compra e venda de cada empresa)
 $('#th-input').addEventListener('input', async (e) => {
-  const q = e.target.value.trim().toLowerCase();
-  if (q.length < 2) { $('#th-suggest').innerHTML = ''; return; }
-  const idx = await loadThermoIndex();
-  const norm = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-  const nq = norm(q);
-  const hits = idx.filter((x) => x.t.toLowerCase().startsWith(nq) || norm(x.n).includes(nq)).slice(0, 6);
-  $('#th-suggest').innerHTML = hits.map((x) => `<button data-t="${esc(x.t)}"><b>${esc(x.t)}</b><span>${esc(x.n)}</span></button>`).join('');
+  rank.q = e.target.value.trim();
+  if (thermoTicker) { thermoTicker = null; renderThermoHome(); }
+  renderRanking();
+  if (rank.q && !thermoIndex) { await loadThermoIndex(); renderRanking(); }
 });
 $('#th-input').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && e.target.value.trim()) analyzeThermo(e.target.value.trim());
+  if (e.key !== 'Enter' || !e.target.value.trim()) return;
+  const first = $('#rk-list .rk-row');
+  analyzeThermo(first ? first.dataset.t : e.target.value.trim());
 });
 $('#tab-thermo').addEventListener('click', (e) => {
   const b = e.target.closest('#th-suggest button, #th-chips button');
