@@ -585,7 +585,13 @@ main { padding: 0 var(--g) calc(var(--nav-h) + 56px + env(safe-area-inset-bottom
 .rk-bar i { display: block; height: 100%; border-radius: 2px; }
 .rk-other { font-size: 10.5px; color: var(--faint); }
 .rk-more { margin-top: var(--s4); }
-#th-back { margin-top: var(--s5); }
+#th-result .btn[data-back] { margin-top: var(--s5); }
+.th-back-top {
+  display: inline-flex; align-items: center; gap: 2px; height: var(--control-h); padding: 0 14px 0 8px; margin: var(--s1) 0 var(--s3);
+  border: 1px solid var(--line-2); border-radius: var(--r-pill); color: var(--text); font-size: var(--fs-small);
+}
+.th-back-top svg { width: 18px; height: 18px; }
+.th-back-top:active { background: var(--surface-2); }
 
 .rk-s { text-align: center; line-height: 1; }
 .rk-s b { display: block; font-size: 15px; font-weight: 500; font-variant-numeric: tabular-nums; opacity: .55; }

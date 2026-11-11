@@ -1603,6 +1603,7 @@ function renderThermoResult(a) {
   const fmtRef = (iso) => (iso ? new Date(iso + 'T12:00:00').toLocaleDateString('pt-BR') : '—');
   const methods = { graham: 'Graham', bazin: 'Bazin', hist: 'P/L histórico' };
   $('#th-result').innerHTML = `
+    <button class="th-back-top" data-back><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>Ranking</button>
     <div class="th-head">
       <div><div class="over">${esc(a.setor || '')}</div><h2 class="th-tk">${esc(a.ticker)}</h2><div class="th-name">${esc(a.nome || '')}</div></div>
       <div class="th-price"><div class="over">${esc(a.priceLabel || 'Cotação')}</div><div>${fmtMoney(a.price)}</div></div>
@@ -1631,7 +1632,7 @@ function renderThermoResult(a) {
 
     <p class="foot-note">Fonte: ${esc(a.fonte || 'CVM')}. Balanços até ${fmtRef(a.ref)}; ${a.priceLabel ? 'preço de fechamento do pregão anterior, o mesmo usado no ranking' : 'cotação com atraso'} (Yahoo Finance). Indicadores calculados pelo app a partir das contas oficiais, então podem diferir um pouco de outros sites.<br><br>
     Análise automática para estudo, baseada só em números do passado. <b>Não é recomendação de investimento.</b></p>
-    <button class="btn ghost" id="th-back">Voltar ao ranking</button>`;
+    <button class="btn ghost" data-back>Voltar ao ranking</button>`;
   requestAnimationFrame(() => { drawGauge($('#g-buy'), a.buy.score); drawGauge($('#g-sell'), a.sell.score); });
 }
 
@@ -1721,9 +1722,11 @@ $('#th-rank').addEventListener('click', (e) => {
   const r = e.target.closest('.rk-row');
   if (r) analyzeThermo(r.dataset.t);
 });
+function backToRanking() {
+  thermoTicker = null; thermoReq++; renderThermoHome(); window.scrollTo({ top: 0 });
+}
 $('#th-result').addEventListener('click', (e) => {
-  if (!e.target.closest('#th-back')) return;
-  thermoTicker = null; renderThermoHome(); window.scrollTo({ top: 0 });
+  if (e.target.closest('[data-back]')) backToRanking();
 });
 
 let thermoReq = 0;
@@ -1734,7 +1737,7 @@ async function analyzeThermo(ticker) {
   const req = ++thermoReq;
   const hit = thermoCache[ticker];
   if (hit && Date.now() - hit.at < 10 * 60 * 1000) return renderThermoResult(hit.a);
-  $('#th-result').innerHTML = `<div class="th-loading"><span class="spin"></span>Analisando ${esc(ticker)} com os balanços da CVM…</div>${skeleton(4)}`;
+  $('#th-result').innerHTML = `<button class="th-back-top" data-back><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>Ranking</button><div class="th-loading"><span class="spin"></span>Analisando ${esc(ticker)} com os balanços da CVM…</div>${skeleton(4)}`;
   try {
     if (!rank.data) await loadRanking();
     const r = rank.data && rank.data.acoes.find((x) => x.t === ticker && x.ye);
@@ -1753,7 +1756,7 @@ async function analyzeThermo(ticker) {
     renderThermoResult(a);
   } catch (e) {
     if (req !== thermoReq) return;
-    $('#th-result').innerHTML = `<div class="empty-state"><strong>Não deu para analisar ${esc(ticker)}</strong>${esc(e.message || 'Verifique a conexão e tente de novo.')}</div><button class="btn ghost" id="th-back">Voltar ao ranking</button>`;
+    $('#th-result').innerHTML = `<div class="empty-state"><strong>Não deu para analisar ${esc(ticker)}</strong>${esc(e.message || 'Verifique a conexão e tente de novo.')}</div><button class="btn ghost" data-back>Voltar ao ranking</button>`;
   }
 }
 
@@ -1798,7 +1801,10 @@ $('#tab-ibov').addEventListener('click', (e) => {
   const r = e.target.closest('.row[data-q]'); if (r) quoteSheet(r.dataset.q, r.dataset.title);
 });
 
-document.querySelectorAll('.tab-btn').forEach((b) => b.onclick = () => switchTab(b.dataset.tab));
+document.querySelectorAll('.tab-btn').forEach((b) => b.onclick = () => {
+  if (b.dataset.tab === 'thermo' && b.classList.contains('active') && thermoTicker) return backToRanking();
+  switchTab(b.dataset.tab);
+});
 $('#btn-add-stock').onclick = () => stockForm();
 $('#btn-import-b3').onclick = importSheet;
 $('#btn-add-card').onclick = () => cardForm();
