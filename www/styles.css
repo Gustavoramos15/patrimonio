@@ -567,3 +567,21 @@ main { padding: 0 var(--g) calc(var(--nav-h) + 56px + env(safe-area-inset-bottom
 .tab-btn { padding: 0 10px; font-size: 13px; }
 .tab-btn.active span { max-width: 104px; }
 .when.tbd span { font-size: 8.5px; white-space: nowrap; }
+
+/* ---------- Ranking do Termômetro ---------- */
+#th-rank .section-head { margin-top: var(--s5); }
+#th-rank .seg { margin-bottom: var(--s3); }
+.rk-filter { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); margin-bottom: var(--s1); }
+.rk-filter > span { font-size: var(--fs-small); color: var(--muted); }
+.row.rk-row { grid-template-columns: 26px minmax(0, 1fr) 72px; min-height: 64px; }
+.rk-row .left { min-width: 0; }
+.rk-pos { font: 400 20px/1 var(--serif); color: var(--faint); text-align: left; }
+.rk-row:nth-child(-n+3) .rk-pos { color: var(--text); }
+.rk-row .sym { display: flex; align-items: center; gap: 6px; }
+.badge.flush-l { margin-left: 2px; height: 18px; font-size: 9px; padding: 0 6px; }
+.rk-score { font-size: 18px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; }
+.rk-bar { height: 3px; border-radius: 2px; background: var(--line); margin: 6px 0 4px auto; width: 64px; overflow: hidden; }
+.rk-bar i { display: block; height: 100%; border-radius: 2px; }
+.rk-other { font-size: 10.5px; color: var(--faint); }
+.rk-more { margin-top: var(--s4); }
+#th-back { margin-top: var(--s5); }

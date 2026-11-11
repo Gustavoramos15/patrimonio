@@ -1534,8 +1534,11 @@ async function loadThermoIndex() {
 function renderThermoHome() {
   const b3 = state.holdings.filter((h) => /\.SA$/.test(h.symbol)).map((h) => display(h.symbol));
   $('#th-chips').innerHTML = b3.map((t) => `<button data-t="${esc(t)}" class="${t === thermoTicker ? 'on' : ''}">${esc(t)}</button>`).join('');
+  $('#th-rank').hidden = !!thermoTicker;
   if (!thermoTicker) {
-    $('#th-result').innerHTML = `<div class="empty-state"><strong>Analise uma ação</strong>Busque pelo ticker ou nome da empresa${b3.length ? ', ou toque numa ação da sua carteira' : ''}. O termômetro calcula os indicadores a partir dos balanços oficiais entregues à CVM.</div>`;
+    $('#th-result').innerHTML = '';
+    renderRanking();
+    loadRanking();
   }
   loadThermoIndex();
 }
@@ -1620,9 +1623,82 @@ function renderThermoResult(a) {
     <div class="th-profile"><div class="over">Critérios ajustados ao setor</div><b>${esc(a.profileLabel)}</b>${a.profileNote ? `<p>${esc(a.profileNote)}</p>` : ''}</div>
 
     <p class="foot-note">Fonte: ${esc(a.fonte || 'CVM')}. Balanços até ${fmtRef(a.ref)}; cotação com atraso (Yahoo Finance). Indicadores calculados pelo app a partir das contas oficiais, então podem diferir um pouco de outros sites.<br><br>
-    Análise automática para estudo, baseada só em números do passado. <b>Não é recomendação de investimento.</b></p>`;
+    Análise automática para estudo, baseada só em números do passado. <b>Não é recomendação de investimento.</b></p>
+    <button class="btn ghost" id="th-back">Voltar ao ranking</button>`;
   requestAnimationFrame(() => { drawGauge($('#g-buy'), a.buy.score); drawGauge($('#g-sell'), a.sell.score); });
 }
+
+/* ---------- Ranking (notas calculadas 1x por dia no GitHub, com o mesmo thermo.js) ---------- */
+const RANK_URL = Thermo.DATA_URL.replace(/fundamentos\/$/, 'ranking.json');
+const rank = { data: store.get('rank.data', null), at: 0, k: 'b', liq: true, all: false, loading: false };
+const RK_MIN_LIQ = 1e6;  // R$ 1 milhão negociado por dia
+const RK_MIN_COV = 60;   // nota precisa usar pelo menos 60% dos critérios
+
+async function loadRanking() {
+  if (rank.loading || (rank.at && Date.now() - rank.at < 30 * 60 * 1000)) return;
+  rank.loading = true;
+  if (!rank.data) $('#rk-list').innerHTML = skeleton(6);
+  $('#rk-status').innerHTML = '<span class="spin"></span>';
+  try {
+    const j = await httpGetJSON(RANK_URL);
+    if (j && Array.isArray(j.acoes)) { rank.data = j; rank.at = Date.now(); store.set('rank.data', j); }
+    $('#rk-status').textContent = '';
+  } catch {
+    $('#rk-status').textContent = rank.data ? 'offline' : '';
+  }
+  rank.loading = false;
+  renderRanking();
+}
+
+function renderRanking() {
+  const d = rank.data;
+  $('#rk-liq').setAttribute('aria-checked', String(rank.liq));
+  document.querySelectorAll('#rk-seg button').forEach((b) => b.classList.toggle('on', b.dataset.k === rank.k));
+  const isBuy = rank.k === 'b';
+  $('#rk-sub').textContent = isBuy ? 'Maiores notas de compra' : 'Mais sinais de venda';
+  if (!d) {
+    if (!rank.loading) $('#rk-list').innerHTML = '<div class="empty-state"><strong>Ranking indisponível</strong>Não foi possível baixar as notas agora. Verifique a conexão.</div>';
+    return;
+  }
+  const cov = isBuy ? 'bc' : 'vc';
+  const mine = new Set(state.holdings.map((h) => display(h.symbol)));
+  const list = d.acoes
+    .filter((a) => a[rank.k] != null && a[cov] >= RK_MIN_COV && (!rank.liq || a.liq >= RK_MIN_LIQ))
+    .sort((a, b) => b[rank.k] - a[rank.k] || b.liq - a.liq);
+  const shown = list.slice(0, rank.all ? 100 : 20);
+  $('#rk-list').innerHTML = shown.map((a, i) => {
+    const s = a[rank.k], bd = Thermo.band(s);
+    const other = isBuy ? a.v : a.b;
+    return `<button class="row rk-row" data-t="${esc(a.t)}">
+      <span class="rk-pos">${i + 1}</span>
+      <div class="left"><div class="sym">${esc(a.t)}${mine.has(a.t) ? '<span class="badge flush-l">carteira</span>' : ''}</div>
+        <div class="sub">${esc(a.s || '')}</div></div>
+      <div class="right">
+        <div class="rk-score" style="color:${bd.color}">${s}</div>
+        <div class="rk-bar"><i style="width:${s}%;background:${bd.color}"></i></div>
+        <div class="rk-other">${isBuy ? 'venda' : 'compra'} ${other ?? '—'}</div>
+      </div>
+    </button>`;
+  }).join('') || '<div class="empty">Nenhuma ação com dados suficientes.</div>';
+  if (list.length > 20) $('#rk-list').insertAdjacentHTML('beforeend', `<button class="btn ghost rk-more">${rank.all ? 'Mostrar só o top 20' : `Ver top ${Math.min(100, list.length)}`}</button>`);
+  const dt = d.precos ? new Date(d.precos + 'T12:00:00').toLocaleDateString('pt-BR') : '—';
+  $('#rk-foot').innerHTML = `${list.length} empresas ${rank.liq ? 'com mais de R$ 1 milhão negociado por dia e ' : ''}com dados para pelo menos ${RK_MIN_COV}% dos critérios; uma ação por empresa (a mais negociada).
+    Notas recalculadas todo dia com o preço de fechamento de ${dt} e os balanços da CVM. Toque numa ação para ver a análise completa com a cotação de agora.<br><br>
+    Análise automática baseada em números do passado. <b>Não é recomendação de investimento.</b>`;
+}
+
+$('#th-rank').addEventListener('click', (e) => {
+  const seg = e.target.closest('#rk-seg button');
+  if (seg) { rank.k = seg.dataset.k; rank.all = false; renderRanking(); return; }
+  if (e.target.closest('#rk-liq')) { rank.liq = !rank.liq; renderRanking(); return; }
+  if (e.target.closest('.rk-more')) { rank.all = !rank.all; renderRanking(); return; }
+  const r = e.target.closest('.rk-row');
+  if (r) analyzeThermo(r.dataset.t);
+});
+$('#th-result').addEventListener('click', (e) => {
+  if (!e.target.closest('#th-back')) return;
+  thermoTicker = null; renderThermoHome(); window.scrollTo({ top: 0 });
+});
 
 let thermoReq = 0;
 async function analyzeThermo(ticker) {
@@ -1640,7 +1716,7 @@ async function analyzeThermo(ticker) {
     renderThermoResult(a);
   } catch (e) {
     if (req !== thermoReq) return;
-    $('#th-result').innerHTML = `<div class="empty-state"><strong>Não deu para analisar ${esc(ticker)}</strong>${esc(e.message || 'Verifique a conexão e tente de novo.')}</div>`;
+    $('#th-result').innerHTML = `<div class="empty-state"><strong>Não deu para analisar ${esc(ticker)}</strong>${esc(e.message || 'Verifique a conexão e tente de novo.')}</div><button class="btn ghost" id="th-back">Voltar ao ranking</button>`;
   }
 }
 

@@ -4,7 +4,7 @@ App de finanças pessoais para Android, em preto e branco.
 
 ## Baixar
 
-**[Patrimonio-v1.6.0.apk](Patrimonio-v1.6.0.apk)** — baixe no celular e abra para instalar (permita instalar de fontes desconhecidas).
+**[Patrimonio-v1.7.0.apk](Patrimonio-v1.7.0.apk)** — baixe no celular e abra para instalar (permita instalar de fontes desconhecidas).
 
 ## Funcionalidades
 
@@ -30,6 +30,7 @@ App de finanças pessoais para Android, em preto e branco.
 - Dois termômetros (compra e venda), de 0 a 100, em 5 faixas de cor, com o sinal geral (comprar, manter ou vender) e os principais motivos
 - Indicadores calculados a partir das demonstrações oficiais da CVM: P/L, P/VP, EV/EBITDA, ROE, ROIC, margem, crescimento de 5 anos, dívida líquida/EBITDA, fluxo de caixa livre, dividendos, valor justo (Graham, Bazin, P/L histórico) e comparação com o próprio histórico
 - Critérios e pesos ajustados ao setor (bancos, seguradoras, energia/saneamento/telecom, tecnologia, commodities)
+- Ranking com as maiores notas de compra e de venda entre as ações da B3, recalculado todo dia (filtro de liquidez, uma ação por empresa)
 - Dados: `pipeline/cvm_fundamentos.py` gera `data/fundamentos/` a partir do Portal de Dados Abertos da CVM; o GitHub Actions atualiza todo dia
 - Análise automática para estudo; não é recomendação de investimento
 
